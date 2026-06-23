@@ -2,9 +2,13 @@ import React from 'react';
 
 export default function AIPanel() {
   return (
-    <div className="ai-panel" style={{ width: '300px', borderLeft: '1px solid #ccc', padding: '10px' }}>
-      <h3>AI Assistant</h3>
-      {/* AI Chat goes here */}
+    <div style={{ width: '300px', borderLeft: '1px solid #333', background: '#1e1e1e', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
+      <div style={{ padding: '8px 12px', borderBottom: '1px solid #333', color: '#ccc', fontSize: '12px' }}>
+        AI Assistant
+      </div>
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555', fontSize: '13px' }}>
+        Coming soon
+      </div>
     </div>
   );
 }

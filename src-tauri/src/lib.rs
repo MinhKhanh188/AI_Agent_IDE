@@ -67,6 +67,7 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
+        .plugin(tauri_plugin_pty::init())
         .invoke_handler(tauri::generate_handler![open_folder, read_dir, read_file, write_file])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

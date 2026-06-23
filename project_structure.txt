@@ -23,8 +23,9 @@ AI_Agent_IDE/
 │   │   ├── AIPanel.jsx
 │   │   ├── BottomPanel.jsx
 │   │   ├── EditorPanel.jsx
+│   │   ├── LeftSidebar.jsx
 │   │   ├── MainLayout.jsx
-│   │   └── Sidebar.jsx
+│   │   └── Toolbar.jsx
 │   ├── services/
 │   │   └── README.md
 │   ├── utils/
