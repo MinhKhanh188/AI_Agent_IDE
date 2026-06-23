@@ -1,0 +1,48 @@
+project structure for AI Agent IDE:
+
+AI_Agent_IDE/
+├── .vscode/
+│   └── extensions.json
+├── public/
+├── src/
+│   ├── assets/
+│   ├── components/
+│   │   ├── common/
+│   │   │   └── README.md
+│   │   └── ui/
+│   │       └── README.md
+│   ├── context/
+│   │   └── README.md
+│   ├── features/
+│   │   └── README.md
+│   ├── hooks/
+│   │   └── README.md
+│   ├── layout/
+│   │   ├── AIPanel.jsx
+│   │   ├── BottomPanel.jsx
+│   │   ├── EditorPanel.jsx
+│   │   ├── MainLayout.jsx
+│   │   └── Sidebar.jsx
+│   ├── services/
+│   │   └── README.md
+│   ├── utils/
+│   │   └── README.md
+│   ├── App.css
+│   ├── App.jsx
+│   └── main.jsx
+├── src-tauri/
+│   ├── capabilities/
+│   │   └── default.json
+│   ├── icons/
+│   ├── src/
+│   │   ├── lib.rs
+│   │   └── main.rs
+│   ├── .gitignore
+│   ├── build.rs
+│   ├── Cargo.toml
+│   └── tauri.conf.json
+├── .gitignore
+├── index.html
+├── package.json
+├── README.md
+└── vite.config.js
