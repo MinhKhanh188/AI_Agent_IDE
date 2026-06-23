@@ -79,11 +79,19 @@ function FileTreeNode({ node, openedFile, onFileClick, onOpenTerminal, depth = 0
 }
 
 export default function LeftSidebar({ fileTree, setFileTree, openedFile, setOpenedFile, setFileContent, onOpenTerminal }) {
+  const [rootPath, setRootPath] = useState(null);
+  const [rootExpanded, setRootExpanded] = useState(true);
+  const [rootName, setRootName] = useState('');
+
   async function handleOpenFolder() {
     const folderPath = await invoke('open_folder');
     if (!folderPath) return;
     const tree = await invoke('read_dir', { path: folderPath });
+    const name = folderPath.replace(/\\/g, '/').split('/').pop();
+    setRootPath(folderPath);
+    setRootName(name);
     setFileTree(tree);
+    setRootExpanded(true);
   }
 
   async function handleFileClick(node) {
@@ -100,9 +108,28 @@ export default function LeftSidebar({ fileTree, setFileTree, openedFile, setOpen
         </button>
       </div>
       <div style={{ flex: 1, overflowY: 'auto' }}>
-        {fileTree.map(node => (
-          <FileTreeNode key={node.path} node={node} openedFile={openedFile} onFileClick={handleFileClick} onOpenTerminal={onOpenTerminal} />
-        ))}
+        {rootPath && (
+          <div>
+            <div
+              onClick={() => setRootExpanded(p => !p)}
+              onContextMenu={(e) => { e.preventDefault(); onOpenTerminal(rootPath); }}
+              style={{ paddingLeft: '8px', paddingTop: '4px', paddingBottom: '4px', cursor: 'pointer', color: '#e8e8e8', fontSize: '12px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.5px', userSelect: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}
+            >
+              <span>{rootExpanded ? '▾' : '▸'}</span>
+              <span>{rootName}</span>
+            </div>
+            {rootExpanded && fileTree.map(node => (
+              <FileTreeNode
+                key={node.path}
+                node={node}
+                openedFile={openedFile}
+                onFileClick={handleFileClick}
+                onOpenTerminal={onOpenTerminal}
+                depth={1}
+              />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

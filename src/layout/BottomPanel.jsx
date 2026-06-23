@@ -10,30 +10,43 @@ export default function BottomPanel({ cwd, onClose }) {
   const ptyRef = useRef(null);
 
   useEffect(() => {
-    const term = new Terminal({ theme: { background: '#1e1e1e', foreground: '#cccccc' }, fontSize: 13, cursorBlink: true });
+    if (!termRef.current) return;
+
+    let pty;
+    const term = new Terminal({
+      theme: { background: '#1e1e1e', foreground: '#cccccc' },
+      fontSize: 13,
+      cursorBlink: true,
+      allowTransparency: false,
+    });
     const fitAddon = new FitAddon();
     term.loadAddon(fitAddon);
-    term.open(termRef.current);
-    fitAddon.fit();
-    xtermRef.current = term;
 
-    const pty = spawn('powershell.exe', [], {
-      cols: term.cols,
-      rows: term.rows,
-      cwd: cwd || undefined,
+    const frame = requestAnimationFrame(() => {
+      term.open(termRef.current);
+      fitAddon.fit();
+      xtermRef.current = term;
+
+      pty = spawn('powershell.exe', [], {
+        cols: term.cols,
+        rows: term.rows,
+        cwd: cwd || undefined,
+      });
+      ptyRef.current = pty;
+
+      pty.onData(data => term.write(data));
+      term.onData(data => pty.write(data));
     });
-    ptyRef.current = pty;
-
-    pty.onData(data => term.write(data));
-    term.onData(data => pty.write(data));
 
     const observer = new ResizeObserver(() => {
+      if (!xtermRef.current) return;
       fitAddon.fit();
-      pty.resize(term.cols, term.rows);
+      ptyRef.current?.resize(term.cols, term.rows);
     });
     observer.observe(termRef.current);
 
     return () => {
+      cancelAnimationFrame(frame);
       observer.disconnect();
       term.dispose();
     };
@@ -45,7 +58,7 @@ export default function BottomPanel({ cwd, onClose }) {
         <span style={{ color: '#ccc', fontSize: '12px' }}>Terminal — PowerShell</span>
         <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: '#ccc', cursor: 'pointer', fontSize: '14px' }}>✕</button>
       </div>
-      <div ref={termRef} style={{ flex: 1, overflow: 'hidden', padding: '4px' }} />
+      <div ref={termRef} style={{ flex: 1, overflow: 'hidden' }} />
     </div>
   );
 }
