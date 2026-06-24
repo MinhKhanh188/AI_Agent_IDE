@@ -25,7 +25,7 @@ export default function ActivityBar({ openedFiles, activeFilePath, setActiveFile
               borderRight: '1px solid #1e1e1e',
               borderTop: isActive ? '1px solid #007acc' : '1px solid transparent',
               color: isActive ? '#fff' : '#888',
-              fontSize: '13px',
+              fontSize: 'var(--app-font-size)',
               whiteSpace: 'nowrap',
               flexShrink: 0,
               cursor: 'pointer',
@@ -33,10 +33,10 @@ export default function ActivityBar({ openedFiles, activeFilePath, setActiveFile
               boxSizing: 'border-box',
             }}
           >
-            <span style={{ fontSize: '11px' }}>📄</span>
+            <span style={{ fontSize: 'var(--app-icon-size)' }}>📄</span>
             <span>{file.name}</span>
             {file.dirty && (
-              <span style={{ color: '#e2c08d', fontSize: '16px', lineHeight: 1, marginLeft: '2px' }}>●</span>
+              <span style={{ color: '#e2c08d', fontSize: 'var(--app-font-size)', lineHeight: 1, marginLeft: '2px' }}>●</span>
             )}
             <span
               onClick={e => { e.stopPropagation(); onClose(file.path); }}
@@ -44,7 +44,7 @@ export default function ActivityBar({ openedFiles, activeFilePath, setActiveFile
               style={{
                 marginLeft: '4px',
                 color: '#888',
-                fontSize: '14px',
+                fontSize: 'var(--app-font-size)',
                 lineHeight: 1,
                 cursor: 'pointer',
                 padding: '1px 3px',

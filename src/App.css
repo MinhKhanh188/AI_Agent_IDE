@@ -1,3 +1,18 @@
+:root {
+  --app-font-size: 13px;
+  --app-icon-size: 17px;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+body, #root {
+  font-size: var(--app-font-size);
+  margin: 0;
+  padding: 0;
+}
+
 .logo.vite:hover {
   filter: drop-shadow(0 0 2em #747bff);
 }

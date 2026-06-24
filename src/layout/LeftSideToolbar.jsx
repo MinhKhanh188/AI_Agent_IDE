@@ -11,7 +11,7 @@ const iconBtn = (active) => ({
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  fontSize: '20px',
+  fontSize: 'var(--app-icon-size)',
   borderLeft: active ? '2px solid #007acc' : '2px solid transparent',
   flexShrink: 0,
   boxSizing: 'border-box',

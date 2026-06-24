@@ -49,8 +49,8 @@ export default function SettingsModal({ onClose }) {
           onMouseDown={onMouseDown}
           style={{ height: '40px', background: '#2d2d2d', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', cursor: 'grab', flexShrink: 0, borderBottom: '1px solid #333', userSelect: 'none' }}
         >
-          <span style={{ color: '#ccc', fontSize: '13px', fontWeight: 500 }}>Settings</span>
-          <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: '#888', cursor: 'pointer', fontSize: '16px', lineHeight: 1, padding: '2px 4px' }}>✕</button>
+          <span style={{ color: '#ccc', fontSize: 'var(--app-font-size)', fontWeight: 500 }}>Settings</span>
+          <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: '#888', cursor: 'pointer', fontSize: 'var(--app-font-size)', lineHeight: 1, padding: '2px 4px' }}>✕</button>
         </div>
 
         {/* Body */}
@@ -63,7 +63,7 @@ export default function SettingsModal({ onClose }) {
                 onClick={() => setActiveCategory(cat)}
                 style={{
                   padding: '7px 16px',
-                  fontSize: '13px',
+                  fontSize: 'var(--app-font-size)',
                   cursor: 'pointer',
                   color: activeCategory === cat ? '#fff' : '#ccc',
                   background: activeCategory === cat ? '#094771' : 'transparent',
@@ -80,20 +80,20 @@ export default function SettingsModal({ onClose }) {
           <div style={{ flex: 1, padding: '24px 28px', overflowY: 'auto' }}>
             {activeCategory === 'General' && (
               <>
-                <div style={{ color: '#ccc', fontSize: '16px', fontWeight: 500, marginBottom: '20px', paddingBottom: '8px', borderBottom: '1px solid #333' }}>
+                <div style={{ color: '#ccc', fontSize: 'var(--app-font-size)', fontWeight: 500, marginBottom: '20px', paddingBottom: '8px', borderBottom: '1px solid #333' }}>
                   General
                 </div>
                 <div style={{ marginBottom: '20px' }}>
-                  <div style={{ color: '#bbb', fontSize: '12px', marginBottom: '10px' }}>Editor & Terminal Font Size</div>
+                  <div style={{ color: '#bbb', fontSize: 'var(--app-font-size)', marginBottom: '10px' }}>Editor & Terminal Font Size</div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <button onClick={() => setFontSize(s => Math.max(10, s - 1))} style={{ background: 'transparent', border: '1px solid #555', color: '#ccc', cursor: 'pointer', borderRadius: '3px', padding: '3px 10px', fontSize: '12px' }}>A-</button>
+                    <button onClick={() => setFontSize(s => Math.max(10, s - 1))} style={{ background: 'transparent', border: '1px solid #555', color: '#ccc', cursor: 'pointer', borderRadius: '3px', padding: '3px 10px', fontSize: 'var(--app-font-size)' }}>A-</button>
                     <input
                       type="range" min={10} max={24} value={fontSize}
                       onChange={e => setFontSize(Number(e.target.value))}
                       style={{ width: '140px', accentColor: '#007acc' }}
                     />
-                    <button onClick={() => setFontSize(s => Math.min(24, s + 1))} style={{ background: 'transparent', border: '1px solid #555', color: '#ccc', cursor: 'pointer', borderRadius: '3px', padding: '3px 10px', fontSize: '12px' }}>A+</button>
-                    <span style={{ color: '#888', fontSize: '12px', minWidth: '32px' }}>{fontSize}px</span>
+                    <button onClick={() => setFontSize(s => Math.min(24, s + 1))} style={{ background: 'transparent', border: '1px solid #555', color: '#ccc', cursor: 'pointer', borderRadius: '3px', padding: '3px 10px', fontSize: 'var(--app-font-size)' }}>A+</button>
+                    <span style={{ color: '#888', fontSize: 'var(--app-font-size)', minWidth: '32px' }}>{fontSize}px</span>
                   </div>
                 </div>
               </>

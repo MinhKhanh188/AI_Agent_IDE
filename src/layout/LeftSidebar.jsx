@@ -18,7 +18,7 @@ function ContextMenu({ x, y, node, onClose, onOpenTerminal }) {
       {node.is_dir && (
         <div
           onClick={() => { onOpenTerminal(node.path); onClose(); }}
-          style={{ padding: '7px 14px', fontSize: '12px', color: '#ccc', cursor: 'pointer' }}
+          style={{ padding: '7px 14px', fontSize: 'var(--app-font-size)', color: '#ccc', cursor: 'pointer' }}
           onMouseEnter={e => e.currentTarget.style.background = '#094771'}
           onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
         >
@@ -56,7 +56,7 @@ function FileTreeNode({ node, activeFilePath, onFileClick, onOpenTerminal, depth
           <div
             onClick={() => setExpanded(p => !p)}
             onContextMenu={handleContextMenu}
-            style={{ paddingLeft: `${indent + 8}px`, paddingTop: '3px', paddingBottom: '3px', cursor: 'pointer', color: '#ccc', fontSize: '13px', userSelect: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}
+            style={{ paddingLeft: `${indent + 8}px`, paddingTop: '3px', paddingBottom: '3px', cursor: 'pointer', color: '#ccc', fontSize: 'var(--app-font-size)', userSelect: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}
           >
             <span>{expanded ? '▾' : '▸'}</span>
             <span>📁 {node.name}</span>
@@ -69,7 +69,7 @@ function FileTreeNode({ node, activeFilePath, onFileClick, onOpenTerminal, depth
         <div
           onClick={() => onFileClick(node)}
           onContextMenu={handleContextMenu}
-          style={{ paddingLeft: `${indent + 8}px`, paddingTop: '3px', paddingBottom: '3px', cursor: 'pointer', fontSize: '13px', color: isActive ? '#fff' : '#aaa', background: isActive ? '#094771' : 'transparent', userSelect: 'none' }}
+          style={{ paddingLeft: `${indent + 8}px`, paddingTop: '3px', paddingBottom: '3px', cursor: 'pointer', fontSize: 'var(--app-font-size)', color: isActive ? '#fff' : '#aaa', background: isActive ? '#094771' : 'transparent', userSelect: 'none' }}
         >
           📄 {node.name}
         </div>
@@ -106,7 +106,7 @@ export default function LeftSidebar({ fileTree, setFileTree, openedFiles, active
   return (
     <div style={{ width: '100%', height: '100%', borderRight: '1px solid #333', display: 'flex', flexDirection: 'column', background: '#1e1e1e', overflow: 'hidden' }}>
       <div style={{ padding: '8px' }}>
-        <button onClick={handleOpenFolder} style={{ width: '100%', padding: '6px', background: '#0e639c', color: '#fff', border: 'none', borderRadius: '3px', cursor: 'pointer', fontSize: '12px' }}>
+        <button onClick={handleOpenFolder} style={{ width: '100%', padding: '6px', background: '#0e639c', color: '#fff', border: 'none', borderRadius: '3px', cursor: 'pointer', fontSize: 'var(--app-font-size)' }}>
           Open Folder
         </button>
       </div>
@@ -116,7 +116,7 @@ export default function LeftSidebar({ fileTree, setFileTree, openedFiles, active
             <div
               onClick={() => setRootExpanded(p => !p)}
               onContextMenu={(e) => { e.preventDefault(); onOpenTerminal(rootPath); }}
-              style={{ paddingLeft: '8px', paddingTop: '4px', paddingBottom: '4px', cursor: 'pointer', color: '#e8e8e8', fontSize: '12px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.5px', userSelect: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}
+              style={{ paddingLeft: '8px', paddingTop: '4px', paddingBottom: '4px', cursor: 'pointer', color: '#e8e8e8', fontSize: 'var(--app-font-size)', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.5px', userSelect: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}
             >
               <span>{rootExpanded ? '▾' : '▸'}</span>
               <span>{rootName}</span>

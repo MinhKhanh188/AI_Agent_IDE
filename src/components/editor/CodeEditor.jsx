@@ -36,7 +36,7 @@ export default function CodeEditor({ activeFile, updateContent, markSaved }) {
 
   if (!activeFile) {
     return (
-      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555', fontSize: '14px', background: '#1e1e1e' }}>
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555', fontSize: 'var(--app-font-size)', background: '#1e1e1e' }}>
         Open a file to start editing
       </div>
     );
