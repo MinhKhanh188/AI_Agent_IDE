@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import Toolbar from './Toolbar';
+import LeftSideToolbar from './LeftSideToolbar';
+import ActivityBar from './ActivityBar';
 import LeftSidebar from './LeftSidebar';
 import EditorPanel from './EditorPanel';
 import AIPanel from './AIPanel';
@@ -21,29 +22,25 @@ export default function MainLayout() {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', width: '100vw', overflow: 'hidden', background: '#1e1e1e' }}>
-      <Toolbar
-        sidebarOpen={sidebarOpen}
-        setSidebarOpen={setSidebarOpen}
-        aiPanelOpen={aiPanelOpen}
-        setAiPanelOpen={setAiPanelOpen}
-        bottomPanelOpen={bottomPanelOpen}
-        setBottomPanelOpen={setBottomPanelOpen}
+    <div style={{ display: 'flex', height: '100vh', width: '100vw', overflow: 'hidden', background: '#1e1e1e' }}>
+      <LeftSideToolbar
+        sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen}
+        aiPanelOpen={aiPanelOpen} setAiPanelOpen={setAiPanelOpen}
+        bottomPanelOpen={bottomPanelOpen} setBottomPanelOpen={setBottomPanelOpen}
       />
       <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
         {sidebarOpen && (
           <ResizablePanel edge="right" minSize={150} maxSize={500} defaultSize={250}>
             <LeftSidebar
-              fileTree={fileTree}
-              setFileTree={setFileTree}
-              openedFile={openedFile}
-              setOpenedFile={setOpenedFile}
+              fileTree={fileTree} setFileTree={setFileTree}
+              openedFile={openedFile} setOpenedFile={setOpenedFile}
               setFileContent={setFileContent}
               onOpenTerminal={handleOpenTerminal}
             />
           </ResizablePanel>
         )}
         <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
+          <ActivityBar openedFile={openedFile} />
           <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
             <EditorPanel
               openedFile={openedFile}
@@ -58,10 +55,7 @@ export default function MainLayout() {
           </div>
           {bottomPanelOpen && (
             <ResizablePanel edge="top" minSize={120} maxSize={600} defaultSize={240}>
-              <BottomPanel
-                cwd={terminalCwd}
-                onClose={() => setBottomPanelOpen(false)}
-              />
+              <BottomPanel cwd={terminalCwd} onClose={() => setBottomPanelOpen(false)} />
             </ResizablePanel>
           )}
         </div>

@@ -43,9 +43,7 @@ export default function CodeEditor({ openedFile, fileContent, setFileContent }) 
 
   return (
     <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <div style={{ padding: '6px 12px', background: '#252526', color: '#ccc', fontSize: '12px', borderBottom: '1px solid #333' }}>
-        {openedFile.name}
-      </div>
+
       <div style={{ flexGrow: 1, overflow: 'hidden' }}>
         <Editor
           height="100%"
