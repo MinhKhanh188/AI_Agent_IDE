@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { Terminal } from 'xterm';
 import { FitAddon } from 'xterm-addon-fit';
 import { spawn } from 'tauri-pty';
+import { useAppContext } from '../context/AppContext';
 import 'xterm/css/xterm.css';
 
 export default function BottomPanel({ cwd, onClose }) {
@@ -10,12 +11,15 @@ export default function BottomPanel({ cwd, onClose }) {
   const ptyRef = useRef(null);
   const fitAddonRef = useRef(null);
 
+  const { fontSize } = useAppContext();
+
+  // Initialize xterm once
   useEffect(() => {
     if (!termRef.current) return;
 
     const term = new Terminal({
       theme: { background: '#1e1e1e', foreground: '#cccccc' },
-      fontSize: 13,
+      fontSize: fontSize,
       cursorBlink: true,
       allowTransparency: false,
     });
@@ -54,8 +58,17 @@ export default function BottomPanel({ cwd, onClose }) {
     };
   }, [cwd]);
 
+  // Handle font size changes after mount
+  useEffect(() => {
+    if (xtermRef.current) {
+      xtermRef.current.options.fontSize = fontSize;
+      fitAddonRef.current?.fit();
+      ptyRef.current?.resize(xtermRef.current.cols, xtermRef.current.rows);
+    }
+  }, [fontSize]);
+
   return (
-    <div style={{ height: '240px', borderTop: '1px solid #333', background: '#1e1e1e', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
+    <div style={{ height: '100%', borderTop: '1px solid #333', background: '#1e1e1e', display: 'flex', flexDirection: 'column' }}>
       <div style={{ height: '28px', background: '#252526', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 10px', borderBottom: '1px solid #333', flexShrink: 0 }}>
         <span style={{ color: '#ccc', fontSize: '12px' }}>Terminal — PowerShell</span>
         <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: '#ccc', cursor: 'pointer', fontSize: '14px' }}>✕</button>

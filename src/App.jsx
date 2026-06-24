@@ -1,6 +1,11 @@
-import MainLayout from "./layout/MainLayout";
-import "./App.css";
+import { AppProvider } from './context/AppContext';
+import MainLayout from './layout/MainLayout';
+import './App.css';
 
 export default function App() {
-  return <MainLayout />;
+  return (
+    <AppProvider>
+      <MainLayout />
+    </AppProvider>
+  );
 }

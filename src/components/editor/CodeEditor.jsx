@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import Editor from '@monaco-editor/react';
 import { invoke } from '@tauri-apps/api/core';
+import { useAppContext } from '../../context/AppContext';
 
 function detectLanguage(filename) {
   if (!filename) return 'plaintext';
@@ -18,6 +19,7 @@ function detectLanguage(filename) {
 
 export default function CodeEditor({ openedFile, fileContent, setFileContent }) {
   const editorRef = useRef(null);
+  const { fontSize } = useAppContext();
 
   useEffect(() => {
     const handleKeyDown = async (e) => {
@@ -52,7 +54,7 @@ export default function CodeEditor({ openedFile, fileContent, setFileContent }) 
           value={fileContent}
           onChange={(value) => setFileContent(value ?? '')}
           options={{
-            fontSize: 14,
+            fontSize: fontSize,
             minimap: { enabled: true },
             automaticLayout: true,
             scrollbar: { vertical: 'visible', horizontal: 'visible' },

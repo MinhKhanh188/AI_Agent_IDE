@@ -8,13 +8,13 @@ AI_Agent_IDE/
 │   ├── assets/
 │   ├── components/
 │   │   ├── common/
-│   │   │   └── README.md
+│   │   │   └── ResizablePanel.jsx
 │   │   ├── editor/
 │   │   │   └── CodeEditor.jsx
 │   │   └── ui/
 │   │       └── README.md
 │   ├── context/
-│   │   └── README.md
+│   │   └── AppContext.jsx
 │   ├── features/
 │   │   └── README.md
 │   ├── hooks/

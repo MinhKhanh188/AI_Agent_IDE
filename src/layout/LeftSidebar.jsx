@@ -101,7 +101,7 @@ export default function LeftSidebar({ fileTree, setFileTree, openedFile, setOpen
   }
 
   return (
-    <div style={{ width: '250px', borderRight: '1px solid #333', display: 'flex', flexDirection: 'column', background: '#1e1e1e', overflow: 'hidden', flexShrink: 0 }}>
+    <div style={{ width: '100%', height: '100%', borderRight: '1px solid #333', display: 'flex', flexDirection: 'column', background: '#1e1e1e', overflow: 'hidden' }}>
       <div style={{ padding: '8px' }}>
         <button onClick={handleOpenFolder} style={{ width: '100%', padding: '6px', background: '#0e639c', color: '#fff', border: 'none', borderRadius: '3px', cursor: 'pointer', fontSize: '12px' }}>
           Open Folder

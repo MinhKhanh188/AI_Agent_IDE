@@ -4,6 +4,7 @@ import LeftSidebar from './LeftSidebar';
 import EditorPanel from './EditorPanel';
 import AIPanel from './AIPanel';
 import BottomPanel from './BottomPanel';
+import ResizablePanel from '../components/common/ResizablePanel';
 
 export default function MainLayout() {
   const [fileTree, setFileTree] = useState([]);
@@ -31,14 +32,16 @@ export default function MainLayout() {
       />
       <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
         {sidebarOpen && (
-          <LeftSidebar
-            fileTree={fileTree}
-            setFileTree={setFileTree}
-            openedFile={openedFile}
-            setOpenedFile={setOpenedFile}
-            setFileContent={setFileContent}
-            onOpenTerminal={handleOpenTerminal}
-          />
+          <ResizablePanel edge="right" minSize={150} maxSize={500} defaultSize={250}>
+            <LeftSidebar
+              fileTree={fileTree}
+              setFileTree={setFileTree}
+              openedFile={openedFile}
+              setOpenedFile={setOpenedFile}
+              setFileContent={setFileContent}
+              onOpenTerminal={handleOpenTerminal}
+            />
+          </ResizablePanel>
         )}
         <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
@@ -47,13 +50,19 @@ export default function MainLayout() {
               fileContent={fileContent}
               setFileContent={setFileContent}
             />
-            {aiPanelOpen && <AIPanel />}
+            {aiPanelOpen && (
+              <ResizablePanel edge="left" minSize={200} maxSize={600} defaultSize={300}>
+                <AIPanel />
+              </ResizablePanel>
+            )}
           </div>
           {bottomPanelOpen && (
-            <BottomPanel
-              cwd={terminalCwd}
-              onClose={() => setBottomPanelOpen(false)}
-            />
+            <ResizablePanel edge="top" minSize={120} maxSize={600} defaultSize={240}>
+              <BottomPanel
+                cwd={terminalCwd}
+                onClose={() => setBottomPanelOpen(false)}
+              />
+            </ResizablePanel>
           )}
         </div>
       </div>
