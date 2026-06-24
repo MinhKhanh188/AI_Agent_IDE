@@ -8,11 +8,11 @@ export default function BottomPanel({ cwd, onClose }) {
   const termRef = useRef(null);
   const xtermRef = useRef(null);
   const ptyRef = useRef(null);
+  const fitAddonRef = useRef(null);
 
   useEffect(() => {
     if (!termRef.current) return;
 
-    let pty;
     const term = new Terminal({
       theme: { background: '#1e1e1e', foreground: '#cccccc' },
       fontSize: 13,
@@ -21,34 +21,36 @@ export default function BottomPanel({ cwd, onClose }) {
     });
     const fitAddon = new FitAddon();
     term.loadAddon(fitAddon);
+    fitAddonRef.current = fitAddon;
 
-    const frame = requestAnimationFrame(() => {
-      term.open(termRef.current);
-      fitAddon.fit();
-      xtermRef.current = term;
+    term.open(termRef.current);
+    fitAddon.fit();
+    xtermRef.current = term;
+    term.focus();
 
-      pty = spawn('powershell.exe', [], {
-        cols: term.cols,
-        rows: term.rows,
-        cwd: cwd || undefined,
-      });
-      ptyRef.current = pty;
-
-      pty.onData(data => term.write(data));
-      term.onData(data => pty.write(data));
+    const pty = spawn('powershell.exe', [], {
+      cols: term.cols,
+      rows: term.rows,
+      cwd: cwd || undefined,
     });
+    ptyRef.current = pty;
+    pty.onData(data => term.write(data));
+    term.onData(data => pty.write(data));
 
     const observer = new ResizeObserver(() => {
       if (!xtermRef.current) return;
       fitAddon.fit();
-      ptyRef.current?.resize(term.cols, term.rows);
+      ptyRef.current?.resize(xtermRef.current.cols, xtermRef.current.rows);
     });
     observer.observe(termRef.current);
 
     return () => {
-      cancelAnimationFrame(frame);
       observer.disconnect();
+      ptyRef.current?.kill();
       term.dispose();
+      xtermRef.current = null;
+      ptyRef.current = null;
+      fitAddonRef.current = null;
     };
   }, [cwd]);
 
@@ -58,7 +60,12 @@ export default function BottomPanel({ cwd, onClose }) {
         <span style={{ color: '#ccc', fontSize: '12px' }}>Terminal — PowerShell</span>
         <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: '#ccc', cursor: 'pointer', fontSize: '14px' }}>✕</button>
       </div>
-      <div ref={termRef} style={{ flex: 1, overflow: 'hidden' }} />
+      <div
+        ref={termRef}
+        style={{ flex: 1, overflow: 'hidden' }}
+        tabIndex={0}
+        onFocus={() => xtermRef.current?.focus()}
+      />
     </div>
   );
 }
