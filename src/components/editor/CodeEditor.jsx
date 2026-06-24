@@ -17,23 +17,24 @@ function detectLanguage(filename) {
   return map[ext] || 'plaintext';
 }
 
-export default function CodeEditor({ openedFile, fileContent, setFileContent }) {
-  const editorRef = useRef(null);
+export default function CodeEditor({ activeFile, updateContent, markSaved }) {
   const { fontSize } = useAppContext();
+  const editorRef = useRef(null);
 
   useEffect(() => {
     const handleKeyDown = async (e) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault();
-        if (!openedFile) return;
-        await invoke('write_file', { path: openedFile.path, content: fileContent });
+        if (!activeFile) return;
+        await invoke('write_file', { path: activeFile.path, content: activeFile.content });
+        markSaved(activeFile.path);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [openedFile, fileContent]);
+  }, [activeFile, markSaved]);
 
-  if (!openedFile) {
+  if (!activeFile) {
     return (
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555', fontSize: '14px', background: '#1e1e1e' }}>
         Open a file to start editing
@@ -43,16 +44,16 @@ export default function CodeEditor({ openedFile, fileContent, setFileContent }) 
 
   return (
     <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}>
-
       <div style={{ flexGrow: 1, overflow: 'hidden' }}>
         <Editor
+          key={activeFile.path}
           height="100%"
-          language={detectLanguage(openedFile.name)}
+          language={detectLanguage(activeFile.name)}
           theme="vs-dark"
-          value={fileContent}
-          onChange={(value) => setFileContent(value ?? '')}
+          value={activeFile.content}
+          onChange={(value) => updateContent(activeFile.path, value ?? '')}
           options={{
-            fontSize: fontSize,
+            fontSize,
             minimap: { enabled: true },
             automaticLayout: true,
             scrollbar: { vertical: 'visible', horizontal: 'visible' },

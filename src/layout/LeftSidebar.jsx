@@ -29,10 +29,10 @@ function ContextMenu({ x, y, node, onClose, onOpenTerminal }) {
   );
 }
 
-function FileTreeNode({ node, openedFile, onFileClick, onOpenTerminal, depth = 0 }) {
+function FileTreeNode({ node, activeFilePath, onFileClick, onOpenTerminal, depth = 0 }) {
   const [expanded, setExpanded] = useState(false);
   const [ctxMenu, setCtxMenu] = useState(null);
-  const isActive = openedFile?.path === node.path;
+  const isActive = activeFilePath === node.path;
   const indent = depth * 12;
 
   function handleContextMenu(e) {
@@ -62,7 +62,7 @@ function FileTreeNode({ node, openedFile, onFileClick, onOpenTerminal, depth = 0
             <span>📁 {node.name}</span>
           </div>
           {expanded && node.children?.map(child => (
-            <FileTreeNode key={child.path} node={child} openedFile={openedFile} onFileClick={onFileClick} onOpenTerminal={onOpenTerminal} depth={depth + 1} />
+            <FileTreeNode key={child.path} node={child} activeFilePath={activeFilePath} onFileClick={onFileClick} onOpenTerminal={onOpenTerminal} depth={depth + 1} />
           ))}
         </div>
       ) : (
@@ -78,7 +78,7 @@ function FileTreeNode({ node, openedFile, onFileClick, onOpenTerminal, depth = 0
   );
 }
 
-export default function LeftSidebar({ fileTree, setFileTree, openedFile, setOpenedFile, setFileContent, onOpenTerminal }) {
+export default function LeftSidebar({ fileTree, setFileTree, openedFiles, activeFilePath, setActiveFilePath, onOpenFile, onOpenTerminal }) {
   const [rootPath, setRootPath] = useState(null);
   const [rootExpanded, setRootExpanded] = useState(true);
   const [rootName, setRootName] = useState('');
@@ -95,9 +95,12 @@ export default function LeftSidebar({ fileTree, setFileTree, openedFile, setOpen
   }
 
   async function handleFileClick(node) {
+    if (openedFiles.find(f => f.path === node.path)) {
+      setActiveFilePath(node.path);
+      return;
+    }
     const content = await invoke('read_file', { path: node.path });
-    setOpenedFile({ path: node.path, name: node.name });
-    setFileContent(content);
+    onOpenFile(node, content);
   }
 
   return (
@@ -122,7 +125,7 @@ export default function LeftSidebar({ fileTree, setFileTree, openedFile, setOpen
               <FileTreeNode
                 key={node.path}
                 node={node}
-                openedFile={openedFile}
+                activeFilePath={activeFilePath}
                 onFileClick={handleFileClick}
                 onOpenTerminal={onOpenTerminal}
                 depth={1}

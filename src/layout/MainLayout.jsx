@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import LeftSideToolbar from './LeftSideToolbar';
 import ActivityBar from './ActivityBar';
 import LeftSidebar from './LeftSidebar';
@@ -9,12 +9,47 @@ import ResizablePanel from '../components/common/ResizablePanel';
 
 export default function MainLayout() {
   const [fileTree, setFileTree] = useState([]);
-  const [openedFile, setOpenedFile] = useState(null);
-  const [fileContent, setFileContent] = useState('');
+  const [openedFiles, setOpenedFiles] = useState([]);
+  const [activeFilePath, setActiveFilePath] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [aiPanelOpen, setAiPanelOpen] = useState(true);
   const [bottomPanelOpen, setBottomPanelOpen] = useState(false);
   const [terminalCwd, setTerminalCwd] = useState(null);
+
+  const activeFile = openedFiles.find(f => f.path === activeFilePath) ?? null;
+
+  const openFile = useCallback((node, content) => {
+    setOpenedFiles(prev => {
+      if (prev.find(f => f.path === node.path)) return prev;
+      return [...prev, { path: node.path, name: node.name, content, savedContent: content, dirty: false }];
+    });
+    setActiveFilePath(node.path);
+  }, []);
+
+  const closeFile = useCallback((path) => {
+    setOpenedFiles(prev => {
+      const idx = prev.findIndex(f => f.path === path);
+      const next = prev.filter(f => f.path !== path);
+      setActiveFilePath(ap => {
+        if (ap !== path) return ap;
+        if (next.length === 0) return null;
+        return next[Math.min(idx, next.length - 1)].path;
+      });
+      return next;
+    });
+  }, []);
+
+  const updateContent = useCallback((path, content) => {
+    setOpenedFiles(prev => prev.map(f =>
+      f.path === path ? { ...f, content, dirty: content !== f.savedContent } : f
+    ));
+  }, []);
+
+  const markSaved = useCallback((path) => {
+    setOpenedFiles(prev => prev.map(f =>
+      f.path === path ? { ...f, savedContent: f.content, dirty: false } : f
+    ));
+  }, []);
 
   function handleOpenTerminal(folderPath) {
     setTerminalCwd(folderPath);
@@ -28,24 +63,31 @@ export default function MainLayout() {
         aiPanelOpen={aiPanelOpen} setAiPanelOpen={setAiPanelOpen}
         bottomPanelOpen={bottomPanelOpen} setBottomPanelOpen={setBottomPanelOpen}
       />
-      <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
+      <div style={{ display: 'flex', flex: 1, minWidth: 0 }}>
         {sidebarOpen && (
           <ResizablePanel edge="right" minSize={150} maxSize={500} defaultSize={250}>
             <LeftSidebar
               fileTree={fileTree} setFileTree={setFileTree}
-              openedFile={openedFile} setOpenedFile={setOpenedFile}
-              setFileContent={setFileContent}
+              openedFiles={openedFiles}
+              activeFilePath={activeFilePath}
+              setActiveFilePath={setActiveFilePath}
+              onOpenFile={openFile}
               onOpenTerminal={handleOpenTerminal}
             />
           </ResizablePanel>
         )}
         <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
-          <ActivityBar openedFile={openedFile} />
+          <ActivityBar
+            openedFiles={openedFiles}
+            activeFilePath={activeFilePath}
+            setActiveFilePath={setActiveFilePath}
+            onClose={closeFile}
+          />
           <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
             <EditorPanel
-              openedFile={openedFile}
-              fileContent={fileContent}
-              setFileContent={setFileContent}
+              activeFile={activeFile}
+              updateContent={updateContent}
+              markSaved={markSaved}
             />
             {aiPanelOpen && (
               <ResizablePanel edge="left" minSize={200} maxSize={600} defaultSize={300}>
