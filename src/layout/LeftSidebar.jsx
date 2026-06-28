@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { invoke } from '@tauri-apps/api/core';
+import { useAppContext } from '../context/AppContext';
 
 function ContextMenu({ x, y, node, onClose, onOpenTerminal }) {
   const ref = useRef(null);
@@ -79,7 +80,7 @@ function FileTreeNode({ node, activeFilePath, onFileClick, onOpenTerminal, depth
 }
 
 export default function LeftSidebar({ fileTree, setFileTree, openedFiles, activeFilePath, setActiveFilePath, onOpenFile, onOpenTerminal }) {
-  const [rootPath, setRootPath] = useState(null);
+  const { setRootPath } = useAppContext();
   const [rootExpanded, setRootExpanded] = useState(true);
   const [rootName, setRootName] = useState('');
 
@@ -111,7 +112,7 @@ export default function LeftSidebar({ fileTree, setFileTree, openedFiles, active
         </button>
       </div>
       <div style={{ flex: 1, overflowY: 'auto' }}>
-        {rootPath && (
+        {rootName && (
           <div>
             <div
               onClick={() => setRootExpanded(p => !p)}

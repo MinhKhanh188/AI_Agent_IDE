@@ -1,8 +1,40 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useAppContext } from '../context/AppContext';
+import { invoke } from '@tauri-apps/api/core';
 
 const OLLAMA_URL = 'http://localhost:11434/api/chat';
 const MODEL = 'qwen3.5:9b';
+
+const TOOLS = [
+  {
+    type: 'function',
+    function: {
+      name: 'read_file',
+      description: 'Read the full content of a file by its absolute path. Use this when you need to inspect source code or any file in the project.',
+      parameters: {
+        type: 'object',
+        properties: {
+          path: { type: 'string', description: 'Absolute path to the file' }
+        },
+        required: ['path']
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'list_dir',
+      description: 'List files and folders inside a directory by its absolute path.',
+      parameters: {
+        type: 'object',
+        properties: {
+          path: { type: 'string', description: 'Absolute path to the directory' }
+        },
+        required: ['path']
+      }
+    }
+  }
+];
 
 // ── Style definitions ─────────────────────────────────────────────────────────
 const styles = {
@@ -312,6 +344,31 @@ function ThoughtBlock({ thought, isStreaming }) {
   );
 }
 
+/** Shows tool calls made by the model with their results */
+function ToolCallBlock({ calls }) {
+  if (!calls?.length) return null;
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxWidth: '88%', alignSelf: 'flex-start' }}>
+      {calls.map((tc, i) => (
+        <div key={i} style={{
+          background: '#1a2a1a', border: '1px solid #2d4a2d', borderRadius: 8,
+          padding: '5px 10px', fontSize: 'calc(var(--app-font-size) - 1px)',
+        }}>
+          <div style={{ color: '#6ab06a', fontWeight: 600, marginBottom: 2 }}>
+            🔧 {tc.name}({typeof tc.args === 'object' ? Object.values(tc.args)[0] : tc.args})
+          </div>
+          {tc.result && tc.result !== '…' && (
+            <div style={{ color: '#4a7a4a', fontSize: 'calc(var(--app-font-size) - 2px)', maxHeight: 80, overflowY: 'auto' }}>
+              {tc.result.length > 200 ? tc.result.slice(0, 200) + '…' : tc.result}
+            </div>
+          )}
+          {tc.result === '…' && <div style={{ color: '#3a5a3a' }}>Running…</div>}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 export default function AIPanel() {
   // Context
@@ -320,6 +377,7 @@ export default function AIPanel() {
   // Chat state
   const [messages, setMessages] = useState([]);
   const [thoughts, setThoughts] = useState({}); // index → thought string
+  const [toolCalls, setToolCalls] = useState({}); // index → [{name, args, result}]
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isThinking, setIsThinking] = useState(false);
@@ -367,12 +425,19 @@ export default function AIPanel() {
   const buildSystemContent = useCallback(() => {
     const parts = [];
 
-    if (attachedContext.fileTree && fileTree?.length) {
-      const root = rootPath || '(project root)';
-      const flatList = flattenTree(fileTree).join('\n');
-      parts.push(`Project root: ${root}\n\nFile tree:\n${flatList}`);
+    // Always include project root path so AI can construct correct absolute paths for tools
+    if (rootPath) {
+      const projectName = rootPath.replace(/\\/g, '/').split('/').pop();
+      parts.push(`You are an AI assistant inside a code editor.\nProject: ${projectName}\nProject root (use this to construct absolute file paths for tools): ${rootPath}`);
     }
 
+    // File tree if attached
+    if (fileTree?.length) {
+      const flatList = flattenTree(fileTree).join('\n');
+      parts.push(`File tree (use these exact paths with read_file tool):\n${flatList}`);
+    }
+
+    // Current file if attached
     if (attachedContext.currentFile && activeFilePath) {
       const activeFile = openedFiles.find(f => f.path === activeFilePath);
       if (activeFile) {
@@ -382,6 +447,24 @@ export default function AIPanel() {
 
     return parts.length ? parts.join('\n\n') : null;
   }, [attachedContext, fileTree, rootPath, activeFilePath, openedFiles]);
+
+  // ── Tool executor ────────────────────────────────────────────────────────────
+  async function executeTool(name, args) {
+    if (name === 'read_file') {
+      return await invoke('read_file', { path: args.path });
+    }
+    if (name === 'list_dir') {
+      const entries = await invoke('read_dir', { path: args.path });
+      const format = (nodes, indent = '') =>
+        nodes.map(n =>
+          `${indent}${n.is_dir ? '📁' : '📄'} ${n.name}${
+            n.children ? '\n' + format(n.children, indent + '  ') : ''
+          }`
+        ).join('\n');
+      return format(entries);
+    }
+    return `Unknown tool: ${name}`;
+  }
 
   // ── Send message ────────────────────────────────────────────────────────────
   const sendMessage = async () => {
@@ -406,65 +489,113 @@ export default function AIPanel() {
 
       // Prepend system message if context is attached
       const systemContent = buildSystemContent();
-      const apiMessages = systemContent
+
+      // Agentic loop — keeps going until model stops calling tools
+      let apiMessages = systemContent
         ? [{ role: 'system', content: systemContent }, ...nextHistory]
-        : nextHistory;
-
-      const response = await fetch(OLLAMA_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: MODEL,
-          messages: apiMessages,
-          stream: true,
-        }),
-        signal: controller.signal,
-      });
-
-      if (!response.ok) {
-        throw new Error(`Ollama error: ${response.status} ${response.statusText}`);
-      }
-
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let accumulatedThought = '';
-      let accumulatedContent = '';
+        : [...nextHistory];
 
       // eslint-disable-next-line no-constant-condition
       while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+        const response = await fetch(OLLAMA_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: MODEL,
+            messages: apiMessages,
+            tools: TOOLS,
+            stream: true,
+          }),
+          signal: controller.signal,
+        });
 
-        const chunk = decoder.decode(value, { stream: true });
-        const lines = chunk.split('\n');
+        if (!response.ok) {
+          throw new Error(`Ollama error: ${response.status} ${response.statusText}`);
+        }
 
-        for (const line of lines) {
-          const trimmed = line.trim();
-          if (!trimmed) continue;
-          try {
-            const parsed = JSON.parse(trimmed);
-            if (!parsed.message) continue;
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let accumulatedThought = '';
+        let accumulatedContent = '';
+        let accumulatedToolCalls = []; // tool_calls collected from this turn
 
-            // Ollama streams thinking tokens in message.thinking (separate from content)
-            if (parsed.message.thinking) {
-              accumulatedThought += parsed.message.thinking;
-              setThoughts(prev => ({ ...prev, [assistantIdx]: accumulatedThought }));
-            }
+        // eslint-disable-next-line no-constant-condition
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
 
-            // Actual reply tokens come through message.content
-            if (parsed.message.content) {
-              accumulatedContent += parsed.message.content;
-              setIsThinking(false);
-              setMessages((prev) => {
-                const updated = [...prev];
-                updated[assistantIdx] = { role: 'assistant', content: accumulatedContent };
-                return updated;
-              });
-            }
-          } catch {
-            // Ignore malformed JSON lines
+          const chunk = decoder.decode(value, { stream: true });
+          const lines = chunk.split('\n');
+
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed) continue;
+            try {
+              const parsed = JSON.parse(trimmed);
+              if (!parsed.message) continue;
+
+              if (parsed.message.thinking) {
+                accumulatedThought += parsed.message.thinking;
+                setThoughts(prev => ({ ...prev, [assistantIdx]: accumulatedThought }));
+              }
+
+              if (parsed.message.content) {
+                accumulatedContent += parsed.message.content;
+                setIsThinking(false);
+                setMessages(prev => {
+                  const updated = [...prev];
+                  updated[assistantIdx] = { role: 'assistant', content: accumulatedContent };
+                  return updated;
+                });
+              }
+
+              // Collect tool calls — typically arrive on the final done=true chunk
+              if (parsed.message.tool_calls?.length) {
+                accumulatedToolCalls = parsed.message.tool_calls;
+              }
+            } catch { /* ignore malformed lines */ }
           }
         }
+
+        // No tool calls → model is done, exit agentic loop
+        if (accumulatedToolCalls.length === 0) break;
+
+        // Execute each tool call and update UI
+        const toolResults = [];
+        for (const tc of accumulatedToolCalls) {
+          const name = tc.function.name;
+          const args = tc.function.arguments;
+          setIsThinking(false);
+
+          // Show pending tool call in UI
+          setToolCalls(prev => ({
+            ...prev,
+            [assistantIdx]: [...(prev[assistantIdx] || []), { name, args, result: '…' }]
+          }));
+
+          let result;
+          try {
+            result = await executeTool(name, typeof args === 'string' ? JSON.parse(args) : args);
+          } catch (e) {
+            result = `Error: ${e.message}`;
+          }
+
+          // Update UI with result
+          setToolCalls(prev => {
+            const calls = [...(prev[assistantIdx] || [])];
+            calls[calls.length - 1] = { name, args, result };
+            return { ...prev, [assistantIdx]: calls };
+          });
+
+          toolResults.push({ name, result });
+        }
+
+        // Append assistant tool_calls message + tool results back into history
+        apiMessages = [
+          ...apiMessages,
+          { role: 'assistant', content: accumulatedContent, tool_calls: accumulatedToolCalls },
+          ...toolResults.map(tr => ({ role: 'tool', content: tr.result }))
+        ];
       }
     } catch (err) {
       if (err.name === 'AbortError') return;
@@ -547,7 +678,6 @@ export default function AIPanel() {
         <div style={styles.messageList}>
           {messages.length === 0 ? (
             <div style={styles.emptyState}>
-              <span style={{ fontSize: 28 }}>🤖</span>
               <span>Ask me anything…</span>
             </div>
           ) : (
@@ -560,6 +690,10 @@ export default function AIPanel() {
                     isStreaming={isLoading && i === messages.length - 1}
                   />
                 )}
+                {/* Tool call blocks */}
+                {msg.role === 'assistant' && toolCalls[i]?.length > 0 && (
+                  <ToolCallBlock calls={toolCalls[i]} />
+                )}
                 <div style={styles.roleLabel(msg.role)}>
                   {msg.role === 'user' ? 'You' : 'Assistant'}
                 </div>
@@ -567,7 +701,7 @@ export default function AIPanel() {
                   {msg.content
                     ? <>{msg.content}{isLoading && msg.role === 'assistant' && i === messages.length - 1 && <TypingCursor />}</>
                     : isLoading && msg.role === 'assistant' && i === messages.length - 1
-                      ? <span style={{ color: '#666' }}>⏳ Waiting…</span>
+                      ? <span style={{ color: '#666' }}>Waiting for AI model…</span>
                       : <span style={{ color: '#555' }}>…</span>
                   }
                 </div>
