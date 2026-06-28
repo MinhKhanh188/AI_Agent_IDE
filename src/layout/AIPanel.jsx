@@ -204,6 +204,56 @@ const styles = {
     verticalAlign: 'text-bottom',
     animation: 'blink 1s step-end infinite',
   },
+  thoughtBlock: (open) => ({
+    background: '#1a1f2e',
+    border: '1px solid #2d3a52',
+    borderRadius: 8,
+    marginBottom: 4,
+    overflow: 'hidden',
+    maxWidth: '88%',
+    alignSelf: 'flex-start',
+  }),
+  thoughtHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 6,
+    padding: '5px 10px',
+    cursor: 'pointer',
+    userSelect: 'none',
+    color: '#6a85b0',
+    fontSize: 'calc(var(--app-font-size) - 1px)',
+    fontWeight: 600,
+    letterSpacing: '0.04em',
+  },
+  thoughtSpinner: {
+    width: 8,
+    height: 8,
+    borderRadius: '50%',
+    border: '1.5px solid #3a5580',
+    borderTopColor: '#7eb8f7',
+    animation: 'spin 0.8s linear infinite',
+    flexShrink: 0,
+  },
+  thoughtChevron: (open) => ({
+    marginLeft: 'auto',
+    fontSize: 10,
+    transform: open ? 'rotate(90deg)' : 'rotate(0deg)',
+    transition: 'transform 0.2s',
+    color: '#4a6080',
+  }),
+  thoughtBody: {
+    padding: '0 10px 8px 10px',
+    color: '#5a7a9a',
+    fontSize: 'calc(var(--app-font-size) - 1px)',
+    lineHeight: 1.6,
+    whiteSpace: 'pre-wrap',
+    wordBreak: 'break-word',
+    borderTop: '1px solid #1e2a3e',
+    maxHeight: 200,
+    overflowY: 'auto',
+    scrollbarWidth: 'thin',
+    scrollbarColor: '#2a3a52 transparent',
+  },
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -228,6 +278,40 @@ function TypingCursor() {
   return <span style={styles.cursor} />;
 }
 
+/** Collapsible block showing the model's <think>…</think> content */
+function ThoughtBlock({ thought, isStreaming }) {
+  const [open, setOpen] = useState(true);
+
+  // Auto-collapse once streaming finishes
+  useEffect(() => {
+    if (!isStreaming && thought) {
+      const t = setTimeout(() => setOpen(false), 1200);
+      return () => clearTimeout(t);
+    }
+  }, [isStreaming, thought]);
+
+  if (!thought) return null;
+
+  return (
+    <div style={styles.thoughtBlock(open)}>
+      <div style={styles.thoughtHeader} onClick={() => setOpen(o => !o)}>
+        {isStreaming
+          ? <span style={styles.thoughtSpinner} />
+          : <span style={{ fontSize: 11 }}>💭</span>
+        }
+        {isStreaming ? 'Thinking…' : 'Thought process'}
+        <span style={styles.thoughtChevron(open)}>▶</span>
+      </div>
+      {open && (
+        <div style={styles.thoughtBody}>
+          {thought}
+          {isStreaming && <TypingCursor />}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 export default function AIPanel() {
   // Context
@@ -235,6 +319,7 @@ export default function AIPanel() {
 
   // Chat state
   const [messages, setMessages] = useState([]);
+  const [thoughts, setThoughts] = useState({}); // index → thought string
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isThinking, setIsThinking] = useState(false);
@@ -342,7 +427,8 @@ export default function AIPanel() {
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
-      let accumulated = '';
+      let accumulatedThought = '';
+      let accumulatedContent = '';
 
       // eslint-disable-next-line no-constant-condition
       while (true) {
@@ -357,15 +443,21 @@ export default function AIPanel() {
           if (!trimmed) continue;
           try {
             const parsed = JSON.parse(trimmed);
-            if (parsed.message?.content !== undefined) {
-              accumulated += parsed.message.content;
-              // Clear thinking indicator on first real token
-              if (accumulated.length > 0 && isThinking) {
-                setIsThinking(false);
-              }
+            if (!parsed.message) continue;
+
+            // Ollama streams thinking tokens in message.thinking (separate from content)
+            if (parsed.message.thinking) {
+              accumulatedThought += parsed.message.thinking;
+              setThoughts(prev => ({ ...prev, [assistantIdx]: accumulatedThought }));
+            }
+
+            // Actual reply tokens come through message.content
+            if (parsed.message.content) {
+              accumulatedContent += parsed.message.content;
+              setIsThinking(false);
               setMessages((prev) => {
                 const updated = [...prev];
-                updated[assistantIdx] = { role: 'assistant', content: accumulated };
+                updated[assistantIdx] = { role: 'assistant', content: accumulatedContent };
                 return updated;
               });
             }
@@ -419,6 +511,7 @@ export default function AIPanel() {
       {/* Inline keyframes */}
       <style>{`
         @keyframes blink { 50% { opacity: 0; } }
+        @keyframes spin { to { transform: rotate(360deg); } }
         .ai-dropdown-item:hover { background: #2a3a4a !important; }
       `}</style>
 
@@ -460,6 +553,13 @@ export default function AIPanel() {
           ) : (
             messages.map((msg, i) => (
               <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: msg.role === 'user' ? 'flex-end' : 'flex-start' }}>
+                {/* Thought block — only for assistant messages */}
+                {msg.role === 'assistant' && (thoughts[i] || (isThinking && i === messages.length - 1)) && (
+                  <ThoughtBlock
+                    thought={thoughts[i] || ''}
+                    isStreaming={isLoading && i === messages.length - 1}
+                  />
+                )}
                 <div style={styles.roleLabel(msg.role)}>
                   {msg.role === 'user' ? 'You' : 'Assistant'}
                 </div>
@@ -467,7 +567,7 @@ export default function AIPanel() {
                   {msg.content
                     ? <>{msg.content}{isLoading && msg.role === 'assistant' && i === messages.length - 1 && <TypingCursor />}</>
                     : isLoading && msg.role === 'assistant' && i === messages.length - 1
-                      ? <span style={{ color: '#666' }}>🧠 Thinking…</span>
+                      ? <span style={{ color: '#666' }}>⏳ Waiting…</span>
                       : <span style={{ color: '#555' }}>…</span>
                   }
                 </div>
