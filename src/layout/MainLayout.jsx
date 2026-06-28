@@ -1,4 +1,5 @@
 import React, { useState, useCallback } from 'react';
+import { useAppContext } from '../context/AppContext';
 import LeftSideToolbar from './LeftSideToolbar';
 import ActivityBar from './ActivityBar';
 import LeftSidebar from './LeftSidebar';
@@ -8,24 +9,24 @@ import BottomPanel from './BottomPanel';
 import ResizablePanel from '../components/common/ResizablePanel';
 
 export default function MainLayout() {
-  const [fileTree, setFileTree] = useState([]);
-  const [openedFiles, setOpenedFiles] = useState([]);
-  const [activeFilePath, setActiveFilePath] = useState(null);
+  // ── Global project state from context ─────────────────────────────────────
+  const {
+    fileTree, setFileTree,
+    openedFiles, setOpenedFiles,
+    activeFilePath, setActiveFilePath,
+    openFile,
+  } = useAppContext();
+
+  // ── UI toggle state (local — not needed globally) ─────────────────────────
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [aiPanelOpen, setAiPanelOpen] = useState(true);
   const [bottomPanelOpen, setBottomPanelOpen] = useState(false);
   const [terminalCwd, setTerminalCwd] = useState(null);
 
+  // ── Derived ───────────────────────────────────────────────────────────────
   const activeFile = openedFiles.find(f => f.path === activeFilePath) ?? null;
 
-  const openFile = useCallback((node, content) => {
-    setOpenedFiles(prev => {
-      if (prev.find(f => f.path === node.path)) return prev;
-      return [...prev, { path: node.path, name: node.name, content, savedContent: content, dirty: false }];
-    });
-    setActiveFilePath(node.path);
-  }, []);
-
+  // ── File operations (stay local — they only mutate openedFiles/activeFilePath) ──
   const closeFile = useCallback((path) => {
     setOpenedFiles(prev => {
       const idx = prev.findIndex(f => f.path === path);
@@ -37,19 +38,19 @@ export default function MainLayout() {
       });
       return next;
     });
-  }, []);
+  }, [setOpenedFiles, setActiveFilePath]);
 
   const updateContent = useCallback((path, content) => {
     setOpenedFiles(prev => prev.map(f =>
       f.path === path ? { ...f, content, dirty: content !== f.savedContent } : f
     ));
-  }, []);
+  }, [setOpenedFiles]);
 
   const markSaved = useCallback((path) => {
     setOpenedFiles(prev => prev.map(f =>
       f.path === path ? { ...f, savedContent: f.content, dirty: false } : f
     ));
-  }, []);
+  }, [setOpenedFiles]);
 
   function handleOpenTerminal(folderPath) {
     setTerminalCwd(folderPath);
