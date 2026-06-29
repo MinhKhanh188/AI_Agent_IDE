@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { useAppContext } from '../context/AppContext';
 import LeftSideToolbar from './LeftSideToolbar';
 import ActivityBar from './ActivityBar';
@@ -15,13 +15,34 @@ export default function MainLayout() {
     openedFiles, setOpenedFiles,
     activeFilePath, setActiveFilePath,
     openFile,
+    terminalCwd, setTerminalCwd,
   } = useAppContext();
 
   // ── UI toggle state (local — not needed globally) ─────────────────────────
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [aiPanelOpen, setAiPanelOpen] = useState(true);
-  const [bottomPanelOpen, setBottomPanelOpen] = useState(false);
-  const [terminalCwd, setTerminalCwd] = useState(null);
+  const [sidebarOpen, setSidebarOpen] = useState(() => {
+    try { return localStorage.getItem('aiide_sidebarOpen') !== 'false'; }
+    catch { return true; }
+  });
+  const [aiPanelOpen, setAiPanelOpen] = useState(() => {
+    try { return localStorage.getItem('aiide_aiPanelOpen') !== 'false'; }
+    catch { return true; }
+  });
+  const [bottomPanelOpen, setBottomPanelOpen] = useState(() => {
+    try { return localStorage.getItem('aiide_bottomPanelOpen') === 'true'; }
+    catch { return false; }
+  });
+
+  useEffect(() => {
+    try { localStorage.setItem('aiide_sidebarOpen', sidebarOpen); } catch {}
+  }, [sidebarOpen]);
+
+  useEffect(() => {
+    try { localStorage.setItem('aiide_aiPanelOpen', aiPanelOpen); } catch {}
+  }, [aiPanelOpen]);
+
+  useEffect(() => {
+    try { localStorage.setItem('aiide_bottomPanelOpen', bottomPanelOpen); } catch {}
+  }, [bottomPanelOpen]);
 
   // ── Derived ───────────────────────────────────────────────────────────────
   const activeFile = openedFiles.find(f => f.path === activeFilePath) ?? null;

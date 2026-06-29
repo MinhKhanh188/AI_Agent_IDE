@@ -34,6 +34,13 @@ export default function CodeEditor({ activeFile, updateContent, markSaved }) {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [activeFile, markSaved]);
 
+  useEffect(() => {
+    if (!activeFile || activeFile.content == null) return;
+    invoke('read_file', { path: activeFile.path })
+      .then(content => updateContent(activeFile.path, content))
+      .catch(err => console.error('Failed to read file:', err));
+  }, [activeFile?.path, activeFile?.content]);
+
   if (!activeFile) {
     return (
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555', fontSize: 'var(--app-font-size)', background: '#1e1e1e' }}>

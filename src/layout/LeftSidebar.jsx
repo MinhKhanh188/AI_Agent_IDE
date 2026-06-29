@@ -80,9 +80,9 @@ function FileTreeNode({ node, activeFilePath, onFileClick, onOpenTerminal, depth
 }
 
 export default function LeftSidebar({ fileTree, setFileTree, openedFiles, activeFilePath, setActiveFilePath, onOpenFile, onOpenTerminal }) {
-  const { setRootPath } = useAppContext();
+  const { rootPath, setRootPath } = useAppContext();
   const [rootExpanded, setRootExpanded] = useState(true);
-  const [rootName, setRootName] = useState('');
+  const [rootName, setRootName] = useState(rootPath ? rootPath.replace(/\\/g, '/').split('/').pop() : '');
 
   async function handleOpenFolder() {
     const folderPath = await invoke('open_folder');
@@ -112,7 +112,7 @@ export default function LeftSidebar({ fileTree, setFileTree, openedFiles, active
         </button>
       </div>
       <div style={{ flex: 1, overflowY: 'auto' }}>
-        {rootName && (
+        {rootPath && (
           <div>
             <div
               onClick={() => setRootExpanded(p => !p)}

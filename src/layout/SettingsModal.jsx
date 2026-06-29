@@ -1,10 +1,16 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { useAppContext } from '../context/AppContext';
+import AI_PROVIDERS from '../services/ai-providers';
 
-const categories = ['General'];
+const categories = ['General', 'AI'];
 
 export default function SettingsModal({ onClose }) {
-  const { fontSize, setFontSize } = useAppContext();
+  const { fontSize, setFontSize, aiConfig, setAiConfig } = useAppContext();
+
+  const [localAi, setLocalAi] = useState({ ...aiConfig });
+  const currentProvider = AI_PROVIDERS[localAi.provider] ?? AI_PROVIDERS.ollama;
+
+  const saveAi = () => setAiConfig(localAi);
   const [activeCategory, setActiveCategory] = useState('General');
   const [pos, setPos] = useState({ x: window.innerWidth / 2 - 360, y: window.innerHeight / 2 - 260 });
   const dragging = useRef(false);
@@ -96,6 +102,78 @@ export default function SettingsModal({ onClose }) {
                     <span style={{ color: '#888', fontSize: 'var(--app-font-size)', minWidth: '32px' }}>{fontSize}px</span>
                   </div>
                 </div>
+              </>
+            )}
+            {activeCategory === 'AI' && (
+              <>
+                <div style={{ color: '#ccc', fontSize: 'var(--app-font-size)', fontWeight: 500, marginBottom: '20px', paddingBottom: '8px', borderBottom: '1px solid #333' }}>
+                  AI Provider
+                </div>
+
+                {/* Provider */}
+                <div style={{ marginBottom: '20px' }}>
+                  <div style={{ color: '#bbb', fontSize: 'var(--app-font-size)', marginBottom: '8px' }}>Provider</div>
+                  <select
+                    value={localAi.provider}
+                    onChange={e => setLocalAi(p => ({ ...p, provider: e.target.value, model: AI_PROVIDERS[e.target.value].models[0] }))}
+                    style={{ background: '#333', color: '#ccc', border: '1px solid #555', padding: '5px 10px', borderRadius: '4px', fontSize: 'var(--app-font-size)', width: '220px' }}
+                  >
+                    {Object.values(AI_PROVIDERS).map(p => (
+                      <option key={p.id} value={p.id}>{p.label}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Model */}
+                <div style={{ marginBottom: '20px' }}>
+                  <div style={{ color: '#bbb', fontSize: 'var(--app-font-size)', marginBottom: '8px' }}>Model</div>
+                  <select
+                    value={localAi.model}
+                    onChange={e => setLocalAi(p => ({ ...p, model: e.target.value }))}
+                    style={{ background: '#333', color: '#ccc', border: '1px solid #555', padding: '5px 10px', borderRadius: '4px', fontSize: 'var(--app-font-size)', width: '220px' }}
+                  >
+                    {currentProvider.models.map(m => (
+                      <option key={m} value={m}>{m}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* API Key */}
+                {currentProvider.requiresApiKey && (
+                  <div style={{ marginBottom: '20px' }}>
+                    <div style={{ color: '#bbb', fontSize: 'var(--app-font-size)', marginBottom: '8px' }}>API Key</div>
+                    <input
+                      type="password"
+                      value={localAi.apiKey}
+                      onChange={e => setLocalAi(p => ({ ...p, apiKey: e.target.value }))}
+                      placeholder="Enter API key"
+                      style={{ background: '#333', color: '#ccc', border: '1px solid #555', padding: '5px 10px', borderRadius: '4px', fontSize: 'var(--app-font-size)', width: '320px' }}
+                    />
+                    <div style={{ color: '#666', fontSize: 'calc(var(--app-font-size) - 2px)', marginTop: '4px' }}>
+                      Stored locally, only sent to the selected provider.
+                    </div>
+                  </div>
+                )}
+
+                {/* Custom base URL */}
+                <div style={{ marginBottom: '24px' }}>
+                  <div style={{ color: '#bbb', fontSize: 'var(--app-font-size)', marginBottom: '8px' }}>Base URL override <span style={{ color: '#555' }}>(optional)</span></div>
+                  <input
+                    type="text"
+                    value={localAi.customBaseUrl}
+                    onChange={e => setLocalAi(p => ({ ...p, customBaseUrl: e.target.value }))}
+                    placeholder={currentProvider.baseUrl}
+                    style={{ background: '#333', color: '#ccc', border: '1px solid #555', padding: '5px 10px', borderRadius: '4px', fontSize: 'var(--app-font-size)', width: '320px' }}
+                  />
+                </div>
+
+                {/* Save */}
+                <button
+                  onClick={saveAi}
+                  style={{ background: '#0e639c', color: '#fff', border: 'none', borderRadius: '4px', padding: '6px 20px', cursor: 'pointer', fontSize: 'var(--app-font-size)' }}
+                >
+                  Save
+                </button>
               </>
             )}
           </div>

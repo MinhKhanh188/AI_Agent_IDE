@@ -1,9 +1,8 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { invoke } from '@tauri-apps/api/core';
-
-const OLLAMA_URL = 'http://localhost:11434/api/chat';
-const MODEL = 'qwen3.5:9b';
+import AI_PROVIDERS from '../services/ai-providers';
+import AIProviderManager from '../services/ai-provider-manager';
 
 const TOOLS = [
   {
@@ -372,7 +371,7 @@ function ToolCallBlock({ calls }) {
 // ── Component ─────────────────────────────────────────────────────────────────
 export default function AIPanel() {
   // Context
-  const { rootPath, activeFilePath, openedFiles, fileTree } = useAppContext();
+  const { rootPath, activeFilePath, openedFiles, fileTree, aiConfig } = useAppContext();
 
   // Chat state
   const [messages, setMessages] = useState([]);
@@ -497,65 +496,30 @@ export default function AIPanel() {
 
       // eslint-disable-next-line no-constant-condition
       while (true) {
-        const response = await fetch(OLLAMA_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            model: MODEL,
-            messages: apiMessages,
-            tools: TOOLS,
-            stream: true,
-          }),
-          signal: controller.signal,
-        });
+      const providerDef = AI_PROVIDERS[aiConfig.provider] ?? AI_PROVIDERS.ollama;
+      const manager = new AIProviderManager({
+        baseUrl: aiConfig.customBaseUrl || providerDef.baseUrl,
+        model: aiConfig.model,
+        apiKey: aiConfig.apiKey,
+        protocol: providerDef.protocol,
+      });
 
-        if (!response.ok) {
-          throw new Error(`Ollama error: ${response.status} ${response.statusText}`);
+      const result = await manager.chat(apiMessages, TOOLS, (type, text) => {
+        if (type === 'thought') {
+          setThoughts(prev => ({ ...prev, [assistantIdx]: text }));
         }
-
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        let accumulatedThought = '';
-        let accumulatedContent = '';
-        let accumulatedToolCalls = []; // tool_calls collected from this turn
-
-        // eslint-disable-next-line no-constant-condition
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-
-          const chunk = decoder.decode(value, { stream: true });
-          const lines = chunk.split('\n');
-
-          for (const line of lines) {
-            const trimmed = line.trim();
-            if (!trimmed) continue;
-            try {
-              const parsed = JSON.parse(trimmed);
-              if (!parsed.message) continue;
-
-              if (parsed.message.thinking) {
-                accumulatedThought += parsed.message.thinking;
-                setThoughts(prev => ({ ...prev, [assistantIdx]: accumulatedThought }));
-              }
-
-              if (parsed.message.content) {
-                accumulatedContent += parsed.message.content;
-                setIsThinking(false);
-                setMessages(prev => {
-                  const updated = [...prev];
-                  updated[assistantIdx] = { role: 'assistant', content: accumulatedContent };
-                  return updated;
-                });
-              }
-
-              // Collect tool calls — typically arrive on the final done=true chunk
-              if (parsed.message.tool_calls?.length) {
-                accumulatedToolCalls = parsed.message.tool_calls;
-              }
-            } catch { /* ignore malformed lines */ }
-          }
+        if (type === 'content') {
+          setIsThinking(false);
+          setMessages(prev => {
+            const updated = [...prev];
+            updated[assistantIdx] = { role: 'assistant', content: text };
+            return updated;
+          });
         }
+      }, abortRef.current?.signal);
+
+      accumulatedToolCalls = result.tool_calls ?? [];
+      accumulatedContent = result.content ?? '';
 
         // No tool calls → model is done, exit agentic loop
         if (accumulatedToolCalls.length === 0) break;
@@ -652,7 +616,7 @@ export default function AIPanel() {
           <span style={styles.dot} />
           AI Assistant
           <span style={{ marginLeft: 'auto', color: '#555', fontWeight: 400, fontSize: 'calc(var(--app-font-size) - 1px)' }}>
-            {MODEL}
+            {aiConfig.model}
           </span>
         </div>
 
