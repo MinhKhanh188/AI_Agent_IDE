@@ -24,9 +24,9 @@ export default function LeftSideToolbar({ sidebarOpen, setSidebarOpen, aiPanelOp
     <>
       <div style={{ width: '48px', background: '#333333', display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0, borderRight: '1px solid #252526' }}>
         <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
-          <button style={iconBtn(sidebarOpen)} title="Explorer" onClick={() => setSidebarOpen(p => !p)}>📁</button>
-          <button style={iconBtn(aiPanelOpen)} title="AI Assistant" onClick={() => setAiPanelOpen(p => !p)}>🤖</button>
-          <button style={iconBtn(bottomPanelOpen)} title="Terminal" onClick={() => setBottomPanelOpen(p => !p)}>⬛</button>
+          <button style={iconBtn(sidebarOpen)} title="Explorer" onClick={() => setSidebarOpen(p => !p)}>Files</button>
+          <button style={iconBtn(aiPanelOpen)} title="AI Assistant" onClick={() => setAiPanelOpen(p => !p)}>AI Assistant</button>
+          <button style={iconBtn(bottomPanelOpen)} title="Terminal" onClick={() => setBottomPanelOpen(p => !p)}>Terminals</button>
         </div>
         <button
           style={{ ...iconBtn(settingsOpen), marginBottom: '4px' }}

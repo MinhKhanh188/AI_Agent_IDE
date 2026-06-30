@@ -276,17 +276,8 @@ function TypingCursor() {
   return <span style={styles.cursor} />;
 }
 
-/** Collapsible block showing the model's <think>…</think> content */
 function ThoughtBlock({ thought, isStreaming }) {
-  const [open, setOpen] = useState(true);
-
-  // Auto-collapse once streaming finishes
-  useEffect(() => {
-    if (!isStreaming && thought) {
-      const t = setTimeout(() => setOpen(false), 1200);
-      return () => clearTimeout(t);
-    }
-  }, [isStreaming, thought]);
+  const [open, setOpen] = useState(false);
 
   if (!thought) return null;
 
@@ -338,7 +329,7 @@ function ToolCallBlock({ calls }) {
 // ── Component ─────────────────────────────────────────────────────────────────
 export default function AIPanel() {
   // Context
-  const { rootPath, activeFilePath, openedFiles, fileTree, aiProviders, activeProviderId, updateContent, markSaved } = useAppContext();
+  const { rootPath, activeFilePath, openedFiles, fileTree, aiProviders, activeProviderId, updateContent, markSaved, refreshTree, rootFolderPath } = useAppContext();
   const activeProvider = aiProviders.find(p => p.id === activeProviderId) ?? aiProviders[0] ?? null;
 
   // Chat state
@@ -459,6 +450,12 @@ export default function AIPanel() {
         provider: activeProvider,
         signal: abortRef.current?.signal,
         openedFiles,
+        fileTree,
+        onFileCreated: () => {
+          if (rootFolderPath) {
+            refreshTree(rootFolderPath);
+          }
+        },
         onFileWritten: (path, newContent) => {
           updateContent(path, newContent);
           markSaved(path);

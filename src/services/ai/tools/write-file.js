@@ -16,6 +16,15 @@ export const definition = {
   }
 };
 
+function hasPath(nodes, targetPath) {
+  if (!nodes || !Array.isArray(nodes)) return false;
+  for (const node of nodes) {
+    if (node.path === targetPath) return true;
+    if (node.children && hasPath(node.children, targetPath)) return true;
+  }
+  return false;
+}
+
 export async function handler(args, context) {
   // Safety block: refuse to overwrite a tab with unsaved user edits
   const openedFiles = context?.openedFiles ?? [];
@@ -24,10 +33,19 @@ export async function handler(args, context) {
     return `Cannot write to ${args.path}: file has unsaved changes open in the editor. Ask the user to save or discard their changes first.`;
   }
 
+  const fileTree = context?.fileTree ?? [];
+  const isNewFile = !hasPath(fileTree, args.path);
+
   await writeFile(args.path, args.content);
 
-  if (typeof context?.onFileWritten === 'function') {
-    context.onFileWritten(args.path, args.content);
+  if (isNewFile) {
+    if (typeof context?.onFileCreated === 'function') {
+      context.onFileCreated();
+    }
+  } else {
+    if (typeof context?.onFileWritten === 'function') {
+      context.onFileWritten(args.path, args.content);
+    }
   }
 
   return `File written: ${args.path}`;

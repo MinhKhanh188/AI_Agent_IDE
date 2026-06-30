@@ -1,3 +1,5 @@
+import { supportsThinking } from './ai-providers';
+
 export default class AIProviderManager {
   constructor({ baseUrl, model, apiKey, protocol }) {
     this.baseUrl = baseUrl;
@@ -50,13 +52,25 @@ export default class AIProviderManager {
   // ── OpenAI ────────────────────────────────────────────────────────────────
   async _openai(messages, tools, onChunk, signal) {
     const formattedTools = tools.map(t => ({ type: t.type, function: t.function }));
+    
+    const requestBody = {
+      model: this.model,
+      messages,
+      tools: formattedTools,
+      stream: true,
+    };
+
+    if (supportsThinking('openai', this.model)) {
+      requestBody.reasoning_effort = 'medium';
+    }
+
     const res = await fetch(`${this.baseUrl}/chat/completions`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         ...(this.apiKey ? { 'Authorization': `Bearer ${this.apiKey}` } : {}),
       },
-      body: JSON.stringify({ model: this.model, messages, tools: formattedTools, stream: true }),
+      body: JSON.stringify(requestBody),
       signal,
     });
     if (!res.ok) throw new Error(`OpenAI error ${res.status}: ${await res.text()}`);
@@ -64,6 +78,7 @@ export default class AIProviderManager {
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
     let content = '';
+    let thought = '';
     const toolCallBuffers = {};
 
     while (true) {
@@ -76,6 +91,13 @@ export default class AIProviderManager {
           const delta = JSON.parse(t.slice(6)).choices?.[0]?.delta;
           if (!delta) continue;
           if (delta.content) { content += delta.content; onChunk?.('content', content); }
+          
+          const reasonStr = delta.reasoning_content || delta.reasoning;
+          if (reasonStr) {
+            thought += reasonStr;
+            onChunk?.('thought', thought);
+          }
+
           if (delta.tool_calls) {
             for (const tc of delta.tool_calls) {
               const i = tc.index ?? 0;
@@ -89,7 +111,7 @@ export default class AIProviderManager {
         } catch {}
       }
     }
-    return { content, thought: '', tool_calls: Object.values(toolCallBuffers) };
+    return { content, thought, tool_calls: Object.values(toolCallBuffers) };
   }
 
   // ── Anthropic ─────────────────────────────────────────────────────────────
@@ -102,6 +124,24 @@ export default class AIProviderManager {
     const systemMsg = messages.find(m => m.role === 'system')?.content || '';
     const filtered  = messages.filter(m => m.role !== 'system');
 
+    const isThinkingEnabled = supportsThinking('anthropic', this.model);
+    const budgetTokens = 4096;
+    const requestBody = {
+      model: this.model,
+      system: systemMsg,
+      messages: filtered,
+      tools: formattedTools,
+      max_tokens: isThinkingEnabled ? budgetTokens + 1024 : 4096,
+      stream: true,
+    };
+
+    if (isThinkingEnabled) {
+      requestBody.thinking = {
+        type: 'enabled',
+        budget_tokens: budgetTokens,
+      };
+    }
+
     const res = await fetch(`${this.baseUrl}/v1/messages`, {
       method: 'POST',
       headers: {
@@ -110,14 +150,7 @@ export default class AIProviderManager {
         'anthropic-version': '2023-06-01',
         'anthropic-dangerous-direct-browser-access': 'true',
       },
-      body: JSON.stringify({
-        model: this.model,
-        system: systemMsg,
-        messages: filtered,
-        tools: formattedTools,
-        max_tokens: 4096,
-        stream: true,
-      }),
+      body: JSON.stringify(requestBody),
       signal,
     });
     if (!res.ok) throw new Error(`Anthropic error ${res.status}: ${await res.text()}`);
@@ -125,6 +158,7 @@ export default class AIProviderManager {
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
     let content = '';
+    let thought = '';
     const toolBuffers = {};
 
     while (true) {
@@ -137,6 +171,7 @@ export default class AIProviderManager {
           const p = JSON.parse(t.slice(6));
           if (p.type === 'content_block_delta') {
             if (p.delta.type === 'text_delta') { content += p.delta.text; onChunk?.('content', content); }
+            if (p.delta.type === 'thinking_delta') { thought += p.delta.thinking; onChunk?.('thought', thought); }
             if (p.delta.type === 'input_json_delta') {
               const i = p.index ?? 0;
               toolBuffers[i] = (toolBuffers[i] || '') + p.delta.partial_json;
@@ -145,6 +180,6 @@ export default class AIProviderManager {
         } catch {}
       }
     }
-    return { content, thought: '', tool_calls: Object.values(toolBuffers) };
+    return { content, thought, tool_calls: Object.values(toolBuffers) };
   }
 }

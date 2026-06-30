@@ -35,10 +35,23 @@ export default function CodeEditor({ activeFile, updateContent, markSaved }) {
   }, [activeFile, markSaved]);
 
   useEffect(() => {
-    if (!activeFile || activeFile.content == null) return;
+    if (!activeFile) return;
+    
+    // Always fetch if content hasn't been loaded yet (e.g. restored tab from 
+    // localStorage). Otherwise only sync if disk differs from in-memory (existing 
+    // stale-check behavior for tab switches).
+    if (activeFile.content == null) {
+      readFile(activeFile.path)
+        .then(diskContent => {
+          updateContent(activeFile.path, diskContent);
+          markSaved(activeFile.path); // restored tab is not dirty, set savedContent baseline
+        })
+        .catch(err => console.error('Failed to load restored file:', err));
+      return;
+    }
+    
     readFile(activeFile.path)
       .then(diskContent => {
-        // Only update if disk content actually differs from current editor content
         if (diskContent !== activeFile.content) {
           updateContent(activeFile.path, diskContent);
         }

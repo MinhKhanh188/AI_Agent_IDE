@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { DEFAULT_PROVIDERS } from '../services/ai/ai-providers';
+import { readDir } from '../services/fs/file-service';
 
 const AppContext = createContext(null);
 
@@ -151,6 +152,17 @@ export function AppProvider({ children }) {
     ));
   }, [setOpenedFiles]);
 
+  /** Refresh the file tree from disk for a given root path. */
+  const refreshTree = useCallback(async (path) => {
+    if (!path) return;
+    try {
+      const tree = await readDir(path);
+      setFileTree(tree);
+    } catch (err) {
+      console.error('Failed to refresh file tree:', err);
+    }
+  }, [setFileTree]);
+
   return (
     <AppContext.Provider
       value={{
@@ -158,12 +170,14 @@ export function AppProvider({ children }) {
         fontSize, setFontSize,
         // project
         rootPath, setRootPath,
+        rootFolderPath: rootPath,
         fileTree, setFileTree,
         openedFiles, setOpenedFiles,
         activeFilePath, setActiveFilePath,
         openFile,
         // editor tab helpers
         updateContent, markSaved,
+        refreshTree,
         // terminal
         terminalCwd, setTerminalCwd,
         // AI

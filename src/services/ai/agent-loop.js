@@ -30,6 +30,8 @@ export async function runAgentLoop({
   signal,
   openedFiles,
   onFileWritten,
+  fileTree,
+  onFileCreated,
   onChunk,
   onToolCallStart,
   onToolCallResult,
@@ -63,18 +65,30 @@ export async function runAgentLoop({
     for (const tc of accumulatedToolCalls) {
       const name = tc.function.name;
       const rawArgs = tc.function.arguments;
-      const args = typeof rawArgs === 'string' ? JSON.parse(rawArgs) : rawArgs;
-
-      onToolCallStart?.({ name, args });
-
-      let result;
+      
+      let args = null;
+      let parseError = null;
       try {
-        result = await executeTool(name, args, { openedFiles, onFileWritten });
-      } catch (e) {
-        result = `Error: ${e.message}`;
+        args = typeof rawArgs === 'string' ? JSON.parse(rawArgs) : rawArgs;
+      } catch (err) {
+        parseError = err;
       }
 
-      onToolCallResult?.({ name, args, result });
+      let result;
+      if (parseError) {
+        result = `Error: failed to parse arguments for tool "${name}" — the JSON was malformed or incomplete: ${parseError.message}`;
+        // Trigger start with rawArgs as fallback so UI knows it started
+        onToolCallStart?.({ name, args: rawArgs });
+      } else {
+        onToolCallStart?.({ name, args });
+        try {
+          result = await executeTool(name, args, { openedFiles, onFileWritten, fileTree, onFileCreated });
+        } catch (e) {
+          result = `Error: ${e.message}`;
+        }
+      }
+
+      onToolCallResult?.({ name, args: parseError ? rawArgs : args, result });
 
       toolResults.push({ id: tc.id, name, result });
     }
