@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { DEFAULT_PROVIDERS } from '../services/ai-providers';
 
 const AppContext = createContext(null);
 
@@ -98,24 +99,31 @@ export function AppProvider({ children }) {
     });
   }, []);
 
-  // ── AI config ──────────────────────────────────────────────────────────────
-  const [aiConfig, setAiConfigRaw] = useState(() => {
+  // ── AI providers (user-defined, fully custom) ───────────────────────────────
+  const [aiProviders, setAiProvidersRaw] = useState(() => {
     try {
-      const val = localStorage.getItem('aiide_ai_config');
-      return val ? JSON.parse(val) : {
-        provider: 'ollama',
-        model: 'qwen3.5:9b',
-        apiKey: '',
-        customBaseUrl: '',
-      };
+      const val = localStorage.getItem('aiide_ai_providers');
+      return val ? JSON.parse(val) : DEFAULT_PROVIDERS;
     } catch {
-      return { provider: 'ollama', model: 'qwen3.5:9b', apiKey: '', customBaseUrl: '' };
+      return DEFAULT_PROVIDERS;
     }
   });
-  const setAiConfig = useCallback((updater) => {
-    setAiConfigRaw(prev => {
+  const setAiProviders = useCallback((updater) => {
+    setAiProvidersRaw(prev => {
       const next = typeof updater === 'function' ? updater(prev) : updater;
-      try { localStorage.setItem('aiide_ai_config', JSON.stringify(next)); } catch {}
+      try { localStorage.setItem('aiide_ai_providers', JSON.stringify(next)); } catch {}
+      return next;
+    });
+  }, []);
+
+  const [activeProviderId, setActiveProviderIdRaw] = useState(() => {
+    try { return localStorage.getItem('aiide_active_provider_id') || DEFAULT_PROVIDERS[0].id; }
+    catch { return DEFAULT_PROVIDERS[0].id; }
+  });
+  const setActiveProviderId = useCallback((updater) => {
+    setActiveProviderIdRaw(prev => {
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      try { localStorage.setItem('aiide_active_provider_id', next ?? ''); } catch {}
       return next;
     });
   }, []);
@@ -143,7 +151,8 @@ export function AppProvider({ children }) {
         // terminal
         terminalCwd, setTerminalCwd,
         // AI
-        aiConfig, setAiConfig,
+        aiProviders, setAiProviders,
+        activeProviderId, setActiveProviderId,
       }}
     >
       {children}

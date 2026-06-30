@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { invoke } from '@tauri-apps/api/core';
-import AI_PROVIDERS from '../services/ai-providers';
 import AIProviderManager from '../services/ai-provider-manager';
 
 const TOOLS = [
@@ -354,7 +353,7 @@ function ToolCallBlock({ calls }) {
           padding: '5px 10px', fontSize: 'calc(var(--app-font-size) - 1px)',
         }}>
           <div style={{ color: '#6ab06a', fontWeight: 600, marginBottom: 2 }}>
-            🔧 {tc.name}({typeof tc.args === 'object' ? Object.values(tc.args)[0] : tc.args})
+            {tc.name}({typeof tc.args === 'object' ? Object.values(tc.args)[0] : tc.args})
           </div>
           {tc.result && tc.result !== '…' && (
             <div style={{ color: '#4a7a4a', fontSize: 'calc(var(--app-font-size) - 2px)', maxHeight: 80, overflowY: 'auto' }}>
@@ -371,7 +370,8 @@ function ToolCallBlock({ calls }) {
 // ── Component ─────────────────────────────────────────────────────────────────
 export default function AIPanel() {
   // Context
-  const { rootPath, activeFilePath, openedFiles, fileTree, aiConfig } = useAppContext();
+  const { rootPath, activeFilePath, openedFiles, fileTree, aiProviders, activeProviderId } = useAppContext();
+  const activeProvider = aiProviders.find(p => p.id === activeProviderId) ?? aiProviders[0] ?? null;
 
   // Chat state
   const [messages, setMessages] = useState([]);
@@ -494,14 +494,27 @@ export default function AIPanel() {
         ? [{ role: 'system', content: systemContent }, ...nextHistory]
         : [...nextHistory];
 
+      let accumulatedToolCalls = [];
+      let accumulatedContent = '';
+
       // eslint-disable-next-line no-constant-condition
       while (true) {
-      const providerDef = AI_PROVIDERS[aiConfig.provider] ?? AI_PROVIDERS.ollama;
+      if (!activeProvider) {
+        setMessages(prev => {
+          const updated = [...prev];
+          updated[assistantIdx] = { role: 'assistant', content: '⚠️ No AI provider configured. Open Settings → AI to add one.' };
+          return updated;
+        });
+        setIsLoading(false);
+        setIsThinking(false);
+        return;
+      }
+
       const manager = new AIProviderManager({
-        baseUrl: aiConfig.customBaseUrl || providerDef.baseUrl,
-        model: aiConfig.model,
-        apiKey: aiConfig.apiKey,
-        protocol: providerDef.protocol,
+        baseUrl: activeProvider.baseUrl,
+        model: activeProvider.model,
+        apiKey: activeProvider.apiKey,
+        protocol: activeProvider.protocol,
       });
 
       const result = await manager.chat(apiMessages, TOOLS, (type, text) => {
@@ -551,14 +564,14 @@ export default function AIPanel() {
             return { ...prev, [assistantIdx]: calls };
           });
 
-          toolResults.push({ name, result });
+          toolResults.push({ id: tc.id, name, result });
         }
 
         // Append assistant tool_calls message + tool results back into history
         apiMessages = [
           ...apiMessages,
           { role: 'assistant', content: accumulatedContent, tool_calls: accumulatedToolCalls },
-          ...toolResults.map(tr => ({ role: 'tool', content: tr.result }))
+          ...toolResults.map(tr => ({ role: 'tool', tool_call_id: tr.id, content: tr.result }))
         ];
       }
     } catch (err) {
@@ -567,7 +580,7 @@ export default function AIPanel() {
         const updated = [...prev];
         updated[assistantIdx] = {
           role: 'assistant',
-          content: `⚠️ Error: ${err.message}`,
+          content: `Error: ${err.message}`,
         };
         return updated;
       });
@@ -616,7 +629,7 @@ export default function AIPanel() {
           <span style={styles.dot} />
           AI Assistant
           <span style={{ marginLeft: 'auto', color: '#555', fontWeight: 400, fontSize: 'calc(var(--app-font-size) - 1px)' }}>
-            {aiConfig.model}
+            {activeProvider ? `${activeProvider.label || activeProvider.id} · ${activeProvider.model}` : 'No provider'}
           </span>
         </div>
 
@@ -686,7 +699,7 @@ export default function AIPanel() {
                 onClick={() => toggleContextKey('currentFile')}
               >
                 <span style={{ fontSize: 15 }}>{attachedContext.currentFile ? '☑' : '☐'}</span>
-                📄 Current File
+                Current File
               </button>
               <button
                 className="ai-dropdown-item"
@@ -694,7 +707,7 @@ export default function AIPanel() {
                 onClick={() => toggleContextKey('fileTree')}
               >
                 <span style={{ fontSize: 15 }}>{attachedContext.fileTree ? '☑' : '☐'}</span>
-                🗂 File Tree
+                File Tree
               </button>
             </div>
           )}

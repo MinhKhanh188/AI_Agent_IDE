@@ -54,7 +54,7 @@ export default class AIProviderManager {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.apiKey}`,
+        ...(this.apiKey ? { 'Authorization': `Bearer ${this.apiKey}` } : {}),
       },
       body: JSON.stringify({ model: this.model, messages, tools: formattedTools, stream: true }),
       signal,
@@ -79,7 +79,9 @@ export default class AIProviderManager {
           if (delta.tool_calls) {
             for (const tc of delta.tool_calls) {
               const i = tc.index ?? 0;
-              if (!toolCallBuffers[i]) toolCallBuffers[i] = { function: { name: '', arguments: '' } };
+              if (!toolCallBuffers[i]) toolCallBuffers[i] = { id: '', type: 'function', function: { name: '', arguments: '' } };
+              if (tc.id) toolCallBuffers[i].id = tc.id;
+              if (tc.type) toolCallBuffers[i].type = tc.type;
               if (tc.function?.name) toolCallBuffers[i].function.name += tc.function.name;
               if (tc.function?.arguments) toolCallBuffers[i].function.arguments += tc.function.arguments;
             }
@@ -104,7 +106,7 @@ export default class AIProviderManager {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': this.apiKey,
+        ...(this.apiKey ? { 'x-api-key': this.apiKey } : {}),
         'anthropic-version': '2023-06-01',
         'anthropic-dangerous-direct-browser-access': 'true',
       },
