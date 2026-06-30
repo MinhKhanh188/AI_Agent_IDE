@@ -17,7 +17,14 @@ export const definition = {
   }
 };
 
-export async function handler(args) {
+export async function handler(args, context) {
+  // Safety block: refuse to overwrite a tab with unsaved user edits
+  const openedFiles = context?.openedFiles ?? [];
+  const tab = openedFiles.find(f => f.path === args.path);
+  if (tab?.dirty) {
+    return `Cannot write to ${args.path}: file has unsaved changes open in the editor. Ask the user to save or discard their changes first.`;
+  }
+
   const content = await readFile(args.path);
   const occurrences = content.split(args.old_string);
   const count = occurrences.length - 1;
@@ -32,5 +39,10 @@ export async function handler(args) {
 
   const newContent = content.replace(args.old_string, args.new_string);
   await writeFile(args.path, newContent);
+
+  if (typeof context?.onFileWritten === 'function') {
+    context.onFileWritten(args.path, newContent);
+  }
+
   return `File edited: ${args.path} (1 replacement)`;
 }

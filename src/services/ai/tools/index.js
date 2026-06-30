@@ -12,8 +12,8 @@ export const toolHandlers = {
   edit_file: editHandler,
 };
 
-export function executeTool(name, args) {
+export function executeTool(name, args, context) {
   const h = toolHandlers[name];
   if (!h) return `Unknown tool: ${name}`;
-  return h(args);
+  return h(args, context);
 }

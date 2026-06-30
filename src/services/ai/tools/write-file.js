@@ -16,7 +16,19 @@ export const definition = {
   }
 };
 
-export async function handler(args) {
+export async function handler(args, context) {
+  // Safety block: refuse to overwrite a tab with unsaved user edits
+  const openedFiles = context?.openedFiles ?? [];
+  const tab = openedFiles.find(f => f.path === args.path);
+  if (tab?.dirty) {
+    return `Cannot write to ${args.path}: file has unsaved changes open in the editor. Ask the user to save or discard their changes first.`;
+  }
+
   await writeFile(args.path, args.content);
+
+  if (typeof context?.onFileWritten === 'function') {
+    context.onFileWritten(args.path, args.content);
+  }
+
   return `File written: ${args.path}`;
 }

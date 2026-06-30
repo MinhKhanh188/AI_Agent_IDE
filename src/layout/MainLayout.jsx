@@ -15,6 +15,8 @@ export default function MainLayout() {
     openedFiles, setOpenedFiles,
     activeFilePath, setActiveFilePath,
     openFile,
+    updateContent,
+    markSaved,
     terminalCwd, setTerminalCwd,
   } = useAppContext();
 
@@ -60,18 +62,6 @@ export default function MainLayout() {
       return next;
     });
   }, [setOpenedFiles, setActiveFilePath]);
-
-  const updateContent = useCallback((path, content) => {
-    setOpenedFiles(prev => prev.map(f =>
-      f.path === path ? { ...f, content, dirty: content !== f.savedContent } : f
-    ));
-  }, [setOpenedFiles]);
-
-  const markSaved = useCallback((path) => {
-    setOpenedFiles(prev => prev.map(f =>
-      f.path === path ? { ...f, savedContent: f.content, dirty: false } : f
-    ));
-  }, [setOpenedFiles]);
 
   function handleOpenTerminal(folderPath) {
     setTerminalCwd(folderPath);

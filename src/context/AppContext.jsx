@@ -137,6 +137,20 @@ export function AppProvider({ children }) {
     setActiveFilePath(node.path);
   }, []);
 
+  /** Update an open tab's content and set dirty flag based on savedContent diff. */
+  const updateContent = useCallback((path, content) => {
+    setOpenedFiles(prev => prev.map(f =>
+      f.path === path ? { ...f, content, dirty: content !== f.savedContent } : f
+    ));
+  }, [setOpenedFiles]);
+
+  /** Mark a tab as saved (clear dirty flag, set savedContent = current content). */
+  const markSaved = useCallback((path) => {
+    setOpenedFiles(prev => prev.map(f =>
+      f.path === path ? { ...f, savedContent: f.content, dirty: false } : f
+    ));
+  }, [setOpenedFiles]);
+
   return (
     <AppContext.Provider
       value={{
@@ -148,6 +162,8 @@ export function AppProvider({ children }) {
         openedFiles, setOpenedFiles,
         activeFilePath, setActiveFilePath,
         openFile,
+        // editor tab helpers
+        updateContent, markSaved,
         // terminal
         terminalCwd, setTerminalCwd,
         // AI

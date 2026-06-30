@@ -13,6 +13,9 @@ import { executeTool, toolDefinitions } from './tools/index.js';
  * @param {Array} params.apiMessages - initial message history (incl. system message if any)
  * @param {object} params.provider - { baseUrl, model, apiKey, protocol }
  * @param {AbortSignal} [params.signal]
+ * @param {Array} [params.openedFiles] - current open editor tabs (for dirty-file check)
+ * @param {(path: string, content: string) => void} [params.onFileWritten]
+ *        - called after a successful AI write/edit so the UI tab can sync
  * @param {(type: 'thought'|'content', text: string) => void} params.onChunk
  *        - streaming callback forwarded to AIProviderManager.chat()
  * @param {(toolCall: {name, args}) => void} [params.onToolCallStart]
@@ -25,6 +28,8 @@ export async function runAgentLoop({
   apiMessages,
   provider,
   signal,
+  openedFiles,
+  onFileWritten,
   onChunk,
   onToolCallStart,
   onToolCallResult,
@@ -64,7 +69,7 @@ export async function runAgentLoop({
 
       let result;
       try {
-        result = await executeTool(name, args);
+        result = await executeTool(name, args, { openedFiles, onFileWritten });
       } catch (e) {
         result = `Error: ${e.message}`;
       }

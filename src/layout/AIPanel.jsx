@@ -338,7 +338,7 @@ function ToolCallBlock({ calls }) {
 // ── Component ─────────────────────────────────────────────────────────────────
 export default function AIPanel() {
   // Context
-  const { rootPath, activeFilePath, openedFiles, fileTree, aiProviders, activeProviderId } = useAppContext();
+  const { rootPath, activeFilePath, openedFiles, fileTree, aiProviders, activeProviderId, updateContent, markSaved } = useAppContext();
   const activeProvider = aiProviders.find(p => p.id === activeProviderId) ?? aiProviders[0] ?? null;
 
   // Chat state
@@ -458,6 +458,11 @@ export default function AIPanel() {
         apiMessages,
         provider: activeProvider,
         signal: abortRef.current?.signal,
+        openedFiles,
+        onFileWritten: (path, newContent) => {
+          updateContent(path, newContent);
+          markSaved(path);
+        },
         onChunk: (type, text) => {
           if (type === 'thought') {
             setThoughts(prev => ({ ...prev, [assistantIdx]: text }));
