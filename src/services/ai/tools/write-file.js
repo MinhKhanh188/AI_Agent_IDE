@@ -4,7 +4,7 @@ export const definition = {
   type: 'function',
   function: {
     name: 'write_file',
-    description: 'Write content to a file at the given absolute path. This OVERWRITES the entire file — all existing content will be lost. Use with caution on files that contain important code.',
+    description: 'Write content to a file at the given absolute path. This OVERWRITES the entire file — all existing content will be lost. Use with caution on files that contain important code. Note: Parent directories will be created automatically if they do not exist.',
     parameters: {
       type: 'object',
       properties: {

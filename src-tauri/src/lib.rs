@@ -58,7 +58,16 @@ fn read_file(path: String) -> Result<String, String> {
 
 #[tauri::command]
 fn write_file(path: String, content: String) -> Result<(), String> {
+    let p = Path::new(&path);
+    if let Some(parent) = p.parent() {
+        fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    }
     fs::write(&path, content).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn create_dir(path: String) -> Result<(), String> {
+    fs::create_dir_all(&path).map_err(|e| e.to_string())
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -68,7 +77,7 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_pty::init())
-        .invoke_handler(tauri::generate_handler![open_folder, read_dir, read_file, write_file])
+        .invoke_handler(tauri::generate_handler![open_folder, read_dir, read_file, write_file, create_dir])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

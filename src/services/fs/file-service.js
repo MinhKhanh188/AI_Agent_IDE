@@ -24,3 +24,8 @@ export function readFile(path) {
 export function writeFile(path, content) {
   return invoke('write_file', { path, content });
 }
+
+/** Creates a directory recursively at the given path. */
+export function createDir(path) {
+  return invoke('create_dir', { path });
+}
