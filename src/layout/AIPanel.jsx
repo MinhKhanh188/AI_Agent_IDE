@@ -2,37 +2,6 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { runAgentLoop } from '../services/ai/agent-loop';
 
-const TOOLS = [
-  {
-    type: 'function',
-    function: {
-      name: 'read_file',
-      description: 'Read the full content of a file by its absolute path. Use this when you need to inspect source code or any file in the project.',
-      parameters: {
-        type: 'object',
-        properties: {
-          path: { type: 'string', description: 'Absolute path to the file' }
-        },
-        required: ['path']
-      }
-    }
-  },
-  {
-    type: 'function',
-    function: {
-      name: 'list_dir',
-      description: 'List files and folders inside a directory by its absolute path.',
-      parameters: {
-        type: 'object',
-        properties: {
-          path: { type: 'string', description: 'Absolute path to the directory' }
-        },
-        required: ['path']
-      }
-    }
-  }
-];
-
 // ── Style definitions ─────────────────────────────────────────────────────────
 const styles = {
   container: {
@@ -487,7 +456,6 @@ export default function AIPanel() {
 
       await runAgentLoop({
         apiMessages,
-        tools: TOOLS,
         provider: activeProvider,
         signal: abortRef.current?.signal,
         onChunk: (type, text) => {

@@ -1,25 +1,5 @@
 import AIProviderManager from './ai-provider-manager';
-import { readFile, readDir } from '../fs/file-service';
-
-/**
- * Executes a single tool call by name. Pure dispatch, no UI concerns.
- */
-export async function executeTool(name, args) {
-  if (name === 'read_file') {
-    return await readFile(args.path);
-  }
-  if (name === 'list_dir') {
-    const entries = await readDir(args.path);
-    const format = (nodes, indent = '') =>
-      nodes.map(n =>
-        `${indent}${n.is_dir ? '📁' : '📄'} ${n.name}${
-          n.children ? '\n' + format(n.children, indent + '  ') : ''
-        }`
-      ).join('\n');
-    return format(entries);
-  }
-  return `Unknown tool: ${name}`;
-}
+import { executeTool, toolDefinitions } from './tools/index.js';
 
 /**
  * Runs the agentic tool-use loop: calls the AI provider, executes any
@@ -31,7 +11,6 @@ export async function executeTool(name, args) {
  *
  * @param {object} params
  * @param {Array} params.apiMessages - initial message history (incl. system message if any)
- * @param {Array} params.tools - tool definitions in OpenAI function-calling format
  * @param {object} params.provider - { baseUrl, model, apiKey, protocol }
  * @param {AbortSignal} [params.signal]
  * @param {(type: 'thought'|'content', text: string) => void} params.onChunk
@@ -44,7 +23,6 @@ export async function executeTool(name, args) {
  */
 export async function runAgentLoop({
   apiMessages,
-  tools,
   provider,
   signal,
   onChunk,
@@ -67,7 +45,7 @@ export async function runAgentLoop({
 
   // eslint-disable-next-line no-constant-condition
   while (true) {
-    const result = await manager.chat(messages, tools, onChunk, signal);
+    const result = await manager.chat(messages, toolDefinitions, onChunk, signal);
 
     const accumulatedToolCalls = result.tool_calls ?? [];
     const accumulatedContent = result.content ?? '';
