@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { invoke } from '@tauri-apps/api/core';
 import { useAppContext } from '../context/AppContext';
+import { openFolder, readDir, readFile } from '../services/fs/file-service';
 
 function ContextMenu({ x, y, node, onClose, onOpenTerminal }) {
   const ref = useRef(null);
@@ -85,9 +85,9 @@ export default function LeftSidebar({ fileTree, setFileTree, openedFiles, active
   const [rootName, setRootName] = useState(rootPath ? rootPath.replace(/\\/g, '/').split('/').pop() : '');
 
   async function handleOpenFolder() {
-    const folderPath = await invoke('open_folder');
+    const folderPath = await openFolder();
     if (!folderPath) return;
-    const tree = await invoke('read_dir', { path: folderPath });
+    const tree = await readDir(folderPath);
     const name = folderPath.replace(/\\/g, '/').split('/').pop();
     setRootPath(folderPath);
     setRootName(name);
@@ -100,7 +100,7 @@ export default function LeftSidebar({ fileTree, setFileTree, openedFiles, active
       setActiveFilePath(node.path);
       return;
     }
-    const content = await invoke('read_file', { path: node.path });
+    const content = await readFile(node.path);
     onOpenFile(node, content);
   }
 

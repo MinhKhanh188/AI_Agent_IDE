@@ -1,6 +1,6 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { useAppContext } from '../context/AppContext';
-import { AI_PROTOCOLS } from '../services/ai-providers';
+import { AI_PROTOCOLS } from '../services/ai/ai-providers';
 
 const categories = ['General', 'AI'];
 

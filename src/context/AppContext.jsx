@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { DEFAULT_PROVIDERS } from '../services/ai-providers';
+import { DEFAULT_PROVIDERS } from '../services/ai/ai-providers';
 
 const AppContext = createContext(null);
 

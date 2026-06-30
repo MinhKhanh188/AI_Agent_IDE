@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useAppContext } from '../context/AppContext';
-import { invoke } from '@tauri-apps/api/core';
-import AIProviderManager from '../services/ai-provider-manager';
+import { runAgentLoop } from '../services/ai/agent-loop';
 
 const TOOLS = [
   {
@@ -447,24 +446,6 @@ export default function AIPanel() {
     return parts.length ? parts.join('\n\n') : null;
   }, [attachedContext, fileTree, rootPath, activeFilePath, openedFiles]);
 
-  // ── Tool executor ────────────────────────────────────────────────────────────
-  async function executeTool(name, args) {
-    if (name === 'read_file') {
-      return await invoke('read_file', { path: args.path });
-    }
-    if (name === 'list_dir') {
-      const entries = await invoke('read_dir', { path: args.path });
-      const format = (nodes, indent = '') =>
-        nodes.map(n =>
-          `${indent}${n.is_dir ? '📁' : '📄'} ${n.name}${
-            n.children ? '\n' + format(n.children, indent + '  ') : ''
-          }`
-        ).join('\n');
-      return format(entries);
-    }
-    return `Unknown tool: ${name}`;
-  }
-
   // ── Send message ────────────────────────────────────────────────────────────
   const sendMessage = async () => {
     const text = input.trim();
@@ -489,16 +470,6 @@ export default function AIPanel() {
       // Prepend system message if context is attached
       const systemContent = buildSystemContent();
 
-      // Agentic loop — keeps going until model stops calling tools
-      let apiMessages = systemContent
-        ? [{ role: 'system', content: systemContent }, ...nextHistory]
-        : [...nextHistory];
-
-      let accumulatedToolCalls = [];
-      let accumulatedContent = '';
-
-      // eslint-disable-next-line no-constant-condition
-      while (true) {
       if (!activeProvider) {
         setMessages(prev => {
           const updated = [...prev];
@@ -510,70 +481,43 @@ export default function AIPanel() {
         return;
       }
 
-      const manager = new AIProviderManager({
-        baseUrl: activeProvider.baseUrl,
-        model: activeProvider.model,
-        apiKey: activeProvider.apiKey,
-        protocol: activeProvider.protocol,
-      });
+      const apiMessages = systemContent
+        ? [{ role: 'system', content: systemContent }, ...nextHistory]
+        : [...nextHistory];
 
-      const result = await manager.chat(apiMessages, TOOLS, (type, text) => {
-        if (type === 'thought') {
-          setThoughts(prev => ({ ...prev, [assistantIdx]: text }));
-        }
-        if (type === 'content') {
+      await runAgentLoop({
+        apiMessages,
+        tools: TOOLS,
+        provider: activeProvider,
+        signal: abortRef.current?.signal,
+        onChunk: (type, text) => {
+          if (type === 'thought') {
+            setThoughts(prev => ({ ...prev, [assistantIdx]: text }));
+          }
+          if (type === 'content') {
+            setIsThinking(false);
+            setMessages(prev => {
+              const updated = [...prev];
+              updated[assistantIdx] = { role: 'assistant', content: text };
+              return updated;
+            });
+          }
+        },
+        onToolCallStart: ({ name, args }) => {
           setIsThinking(false);
-          setMessages(prev => {
-            const updated = [...prev];
-            updated[assistantIdx] = { role: 'assistant', content: text };
-            return updated;
-          });
-        }
-      }, abortRef.current?.signal);
-
-      accumulatedToolCalls = result.tool_calls ?? [];
-      accumulatedContent = result.content ?? '';
-
-        // No tool calls → model is done, exit agentic loop
-        if (accumulatedToolCalls.length === 0) break;
-
-        // Execute each tool call and update UI
-        const toolResults = [];
-        for (const tc of accumulatedToolCalls) {
-          const name = tc.function.name;
-          const args = tc.function.arguments;
-          setIsThinking(false);
-
-          // Show pending tool call in UI
           setToolCalls(prev => ({
             ...prev,
             [assistantIdx]: [...(prev[assistantIdx] || []), { name, args, result: '…' }]
           }));
-
-          let result;
-          try {
-            result = await executeTool(name, typeof args === 'string' ? JSON.parse(args) : args);
-          } catch (e) {
-            result = `Error: ${e.message}`;
-          }
-
-          // Update UI with result
+        },
+        onToolCallResult: ({ name, args, result }) => {
           setToolCalls(prev => {
             const calls = [...(prev[assistantIdx] || [])];
             calls[calls.length - 1] = { name, args, result };
             return { ...prev, [assistantIdx]: calls };
           });
-
-          toolResults.push({ id: tc.id, name, result });
-        }
-
-        // Append assistant tool_calls message + tool results back into history
-        apiMessages = [
-          ...apiMessages,
-          { role: 'assistant', content: accumulatedContent, tool_calls: accumulatedToolCalls },
-          ...toolResults.map(tr => ({ role: 'tool', tool_call_id: tr.id, content: tr.result }))
-        ];
-      }
+        },
+      });
     } catch (err) {
       if (err.name === 'AbortError') return;
       setMessages((prev) => {

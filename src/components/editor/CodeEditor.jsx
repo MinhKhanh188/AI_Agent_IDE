@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import Editor from '@monaco-editor/react';
-import { invoke } from '@tauri-apps/api/core';
 import { useAppContext } from '../../context/AppContext';
+import { readFile, writeFile } from '../../services/fs/file-service';
 
 function detectLanguage(filename) {
   if (!filename) return 'plaintext';
@@ -26,7 +26,7 @@ export default function CodeEditor({ activeFile, updateContent, markSaved }) {
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault();
         if (!activeFile) return;
-        await invoke('write_file', { path: activeFile.path, content: activeFile.content });
+        await writeFile(activeFile.path, activeFile.content);
         markSaved(activeFile.path);
       }
     };
@@ -36,10 +36,15 @@ export default function CodeEditor({ activeFile, updateContent, markSaved }) {
 
   useEffect(() => {
     if (!activeFile || activeFile.content == null) return;
-    invoke('read_file', { path: activeFile.path })
-      .then(content => updateContent(activeFile.path, content))
+    readFile(activeFile.path)
+      .then(diskContent => {
+        // Only update if disk content actually differs from current editor content
+        if (diskContent !== activeFile.content) {
+          updateContent(activeFile.path, diskContent);
+        }
+      })
       .catch(err => console.error('Failed to read file:', err));
-  }, [activeFile?.path, activeFile?.content]);
+  }, [activeFile?.path]);
 
   if (!activeFile) {
     return (

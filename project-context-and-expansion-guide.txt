@@ -1,0 +1,69 @@
+PROJECT CONTEXT — agent_ide
+
+agent_ide is a desktop IDE built with Tauri 2 + React 19 + Vite 7, targeting Windows primarily (cross-platform via Tauri). It has four core capabilities: a Monaco-based code editor, a file explorer backed by native fs access, an embedded PowerShell terminal (xterm + tauri-pty), and an AI chat panel with agentic tool-use (read_file / list_dir tools, streaming responses, multi-protocol support for Ollama / OpenAI / Anthropic).
+
+State management is React Context + localStorage only — no Redux/Zustand, no router, no CSS framework (inline styles + CSS custom properties for theming). Native operations (file I/O, folder picking, terminal spawning) go through Tauri Rust commands invoked from the frontend; AI chat runs entirely in the browser via direct fetch to whichever provider endpoint is configured.
+
+ARCHITECTURE PATTERN
+
+The codebase follows one rule above all others: components render, services do.
+
+A component (anything in layout/ or components/) owns React state, refs, and JSX. It should never contain business logic that doesn't depend on render — no raw API calls, no direct calls to Tauri's invoke(), no hand-rolled streaming/parsing loops sitting inside a .jsx file. That logic belongs in a service: a plain .js module with exported functions, no React, no JSX, callback-driven where it needs to report progress back to a caller.
+
+This split was deliberately applied through three extractions:
+- Terminal/pty lifecycle (spawn, resize, dispose) lives in services/terminal/pty-service.js. BottomPanel.jsx just creates a session and renders the container div.
+- File/folder operations (open_folder, read_dir, read_file, write_file — all Tauri invoke() calls) live in services/fs/file-service.js. LeftSidebar.jsx and CodeEditor.jsx call these functions instead of invoke() directly.
+- The AI agentic tool-use loop (the while(true) loop that calls the provider, executes tool calls, and feeds results back) lives in services/ai/agent-loop.js. AIPanel.jsx supplies UI callbacks (onChunk, onToolCallStart, onToolCallResult) and lets the service drive the loop.
+
+CURRENT FOLDER STRUCTURE
+
+src/
+├── main.jsx                  Entry point
+├── App.jsx                   AppProvider + MainLayout
+├── context/
+│   └── AppContext.jsx         Global state (font size, project, files, terminal, AI providers)
+├── services/                  Pure logic, no JSX, organized by domain
+│   ├── ai/
+│   │   ├── ai-provider-manager.js   Protocol-switched chat() client (Ollama/OpenAI/Anthropic)
+│   │   └── agent-loop.js            Agentic tool-use loop + tool dispatch
+│   ├── fs/
+│   │   └── file-service.js          Wraps all Tauri fs/dialog invoke() calls
+│   └── terminal/
+│       └── pty-service.js           xterm + tauri-pty session creation/lifecycle
+├── components/
+│   ├── common/
+│   │   └── ResizablePanel.jsx       Generic draggable resizer
+│   └── editor/
+│       └── CodeEditor.jsx           Monaco editor wrapper
+└── layout/                    Composition + presentation only
+    ├── MainLayout.jsx          Top-level layout orchestrator
+    ├── ActivityBar.jsx         Open-file tab strip
+    ├── EditorPanel.jsx         Thin Monaco wrapper
+    ├── LeftSidebar.jsx         File tree explorer UI
+    ├── LeftSideToolbar.jsx     Activity bar + settings trigger
+    ├── AIPanel.jsx             AI chat UI, consumes agent-loop.js
+    ├── BottomPanel.jsx         Terminal UI, consumes pty-service.js
+    └── SettingsModal.jsx       Font size + AI provider CRUD
+
+HOW TO ADD A NEW FEATURE
+
+When adding a new capability (e.g. git integration, debugging, search), follow the same two-piece split used for the existing three:
+
+1. Decide if it needs a service. If the feature talks to anything outside React — a Tauri command, an external API, a long-running process, a parsing/streaming loop — it needs a service module. Create services/<feature-name>/<feature-name>-service.js (or split into multiple files if the domain is large, same as ai/ has two files). Export plain functions or a small class. No React imports. No JSX. Callbacks for anything that needs to stream progress back to the UI.
+
+2. Decide if it needs a component. If the feature has a visible UI surface (a panel, a modal, a sidebar section), create it in layout/ if it's a top-level panel akin to AIPanel/BottomPanel, or in components/<feature-name>/ if it's a smaller reusable piece. The component owns state and refs, and calls into the service for anything that isn't pure rendering.
+
+3. Wire it into AppContext only if its state needs to be shared across components or persisted to localStorage. Otherwise keep state local to the component.
+
+4. Naming convention: service files are kebab-case ending in -service.js or a descriptive verb-noun name (agent-loop.js, pty-service.js, file-service.js). Component files are PascalCase .jsx matching the component name.
+
+Example — adding a "git" feature (diff view + commit panel):
+- services/git/git-service.js — wraps Tauri commands for git status/diff/commit, or shells out via a Rust command if needed
+- layout/GitPanel.jsx — UI panel (added to MainLayout like AIPanel/BottomPanel), consumes git-service.js
+- If the diff view is complex enough to need its own sub-components, components/git/DiffViewer.jsx, components/git/CommitForm.jsx
+
+WHAT NOT TO DO
+
+- Don't put invoke() calls, fetch() calls, or streaming/parsing loops directly inside a layout/ or components/ file. Wrap them in a service first.
+- Don't create empty placeholder folders (features/, hooks/, utils/) before there's real code to put in them — they create false signals about the project's structure. Create a folder when the first file that belongs there exists, not before.
+- Don't mix service logic into .jsx files just because the feature "feels" cohesive — the .js/.jsx split is also a build-time/lint signal that a file has no business containing JSX, which keeps service files honest about staying React-free.

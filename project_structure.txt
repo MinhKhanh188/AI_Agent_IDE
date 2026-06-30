@@ -1,24 +1,25 @@
-project structure for AI Agent IDE:
-
 AI_Agent_IDE/
+├── .gitignore
 ├── .vscode/
 │   └── extensions.json
-├── public/
+├── dist/
+├── index.html
+├── package.json
+├── package-lock.json
+├── README.md
+├── vite.config.js
+├── yarn.lock
 ├── src/
-│   ├── assets/
+│   ├── App.jsx
+│   ├── App.css
+│   ├── main.jsx
+│   ├── context/
+│   │   └── AppContext.jsx
 │   ├── components/
 │   │   ├── common/
 │   │   │   └── ResizablePanel.jsx
-│   │   ├── editor/
-│   │   │   └── CodeEditor.jsx
-│   │   └── ui/
-│   │       └── README.md
-│   ├── context/
-│   │   └── AppContext.jsx
-│   ├── features/
-│   │   └── README.md
-│   ├── hooks/
-│   │   └── README.md
+│   │   └── editor/
+│   │       └── CodeEditor.jsx
 │   ├── layout/
 │   │   ├── AIPanel.jsx
 │   │   ├── ActivityBar.jsx
@@ -29,25 +30,31 @@ AI_Agent_IDE/
 │   │   ├── MainLayout.jsx
 │   │   └── SettingsModal.jsx
 │   ├── services/
-│   │   └── README.md
-│   ├── utils/
-│   │   └── README.md
-│   ├── App.css
-│   ├── App.jsx
-│   └── main.jsx
+│   │   ├── ai/
+│   │   │   ├── ai-providers.js
+│   │   │   ├── ai-provider-manager.js
+│   │   │   └── agent-loop.js
+│   │   ├── fs/
+│   │   │   └── file-service.js
+│   │   └── terminal/
+│   │       └── pty-service.js
 ├── src-tauri/
+│   ├── .gitignore
+│   ├── Cargo.toml
+│   ├── Cargo.lock
+│   ├── build.rs
+│   ├── tauri.conf.json
 │   ├── capabilities/
 │   │   └── default.json
+│   ├── gen/
+│   │   └── schemas/
+│   │       ├── acl-manifests.json
+│   │       ├── capabilities.json
+│   │       ├── desktop-schema.json
+│   │       └── windows-schema.json
 │   ├── icons/
-│   ├── src/
-│   │   ├── lib.rs
-│   │   └── main.rs
-│   ├── .gitignore
-│   ├── build.rs
-│   ├── Cargo.toml
-│   └── tauri.conf.json
-├── .gitignore
-├── index.html
-├── package.json
-├── README.md
-└── vite.config.js
+│   │   
+│   └── src/
+│       ├── lib.rs
+│       └── main.rs
+└── public/
